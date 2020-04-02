@@ -224,6 +224,7 @@ class Kobo:
             ) and (
                 jsonContentUrl["UrlFormat"] == "EPUB3"
                 or jsonContentUrl["UrlFormat"] == "KEPUB"
+                or jsonContentUrl["UrlFormat"] == "EPUB3FL"
             ):
                 hasDrm = jsonContentUrl["DRMType"] == "KDRM"
                 return jsonContentUrl["DownloadUrl"], hasDrm
@@ -238,7 +239,7 @@ class Kobo:
                 jsonContentUrl["DRMType"],
                 jsonContentUrl["UrlFormat"],
             )
-
+        
         raise KoboException(message)
 
     def __DownloadToFile(self, url, outputPath: str) -> None:

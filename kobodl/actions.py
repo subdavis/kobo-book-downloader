@@ -72,15 +72,18 @@ def __IsBookArchived(newEntitlement: dict) -> bool:
 
 
 def GetAllBooks(user: User, outputPath: str) -> None:
-    kobo = Kobo(User)
+    kobo = Kobo(user)
     kobo.LoadInitializationSettings()
     bookList = kobo.GetMyBookList()
     for entitlement in bookList:
         newEntitlement = entitlement.get("NewEntitlement")
         if newEntitlement is None:
             continue
-
-        bookMetadata = newEntitlement["BookMetadata"]
+        try:
+            bookMetadata = newEntitlement["BookMetadata"]
+        except Exception:
+            # skip audiobooks
+            continue
         fileName = __MakeFileNameForBook(bookMetadata)
         outputFilePath = os.path.join(outputPath, fileName)
 
@@ -93,9 +96,12 @@ def GetAllBooks(user: User, outputPath: str) -> None:
 
             click.echo(f"Skipping archived book {title}")
             continue
-
-        output = kobo.Download(bookMetadata["RevisionId"], outputFilePath)
-        click.echo(f"Downloaded to {output}", err=True)
+        try:
+            output = kobo.Download(bookMetadata["RevisionId"], outputFilePath)
+            click.echo(f"Downloaded to {output}", err=True)
+        except Exception as e:
+            click.echo("could not download".format(bookMetadata["Title"]))
+            click.echo(e)
 
 
 def GetBook(user: User, revisionId: str, outputPath: str) -> None:
@@ -141,8 +147,11 @@ def __GetBookList(kobo: Kobo, listAll: bool) -> list:
 
         if (not listAll) and __IsBookRead(newEntitlement):
             continue
-
-        bookMetadata = newEntitlement["BookMetadata"]
+        try:
+            bookMetadata = newEntitlement["BookMetadata"]
+        except Exception as e:
+            # skip audiobook
+            continue
         book = [
             bookMetadata["RevisionId"],
             bookMetadata["Title"],

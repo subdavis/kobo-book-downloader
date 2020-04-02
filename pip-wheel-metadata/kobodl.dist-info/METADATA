@@ -1,0 +1,22 @@
+Metadata-Version: 2.1
+Name: kobodl
+Version: 0.2.2
+Summary: UNKNOWN
+Home-page: https://github.com/subdavis/kobo-book-downloader
+Author: Brandon Davis
+Author-email: kobodl@subdavis.com
+License: MIT
+Platform: UNKNOWN
+Requires-Python: >=3.6
+Requires-Dist: click
+Requires-Dist: colorama
+Requires-Dist: dataclasses
+Requires-Dist: dataclasses-json
+Requires-Dist: flask
+Requires-Dist: pycryptodome
+Requires-Dist: requests
+Requires-Dist: tabulate
+
+UNKNOWN
+
+
