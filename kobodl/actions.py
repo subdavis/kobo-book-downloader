@@ -212,8 +212,11 @@ def GetBookOrBooks(user: User, outputPath: str, productId: str = '') -> Union[No
             click.echo(f'Skipping archived book {fileName}')
             continue
 
-        kobo.Download(bookMetadata, book_type == BookType.AUDIOBOOK, outputFilePath)
-        click.echo(f'Downloaded {productId} to {outputFilePath}', err=True)
+        try:
+            kobo.Download(bookMetadata, book_type == BookType.AUDIOBOOK, outputFilePath)
+            click.echo(f'Downloaded {productId} to {outputFilePath}', err=True)
+        except KoboException as e:
+            click.echo(str(e), err=True)
 
         if productId:
             # TODO: support audiobook downloads from web
