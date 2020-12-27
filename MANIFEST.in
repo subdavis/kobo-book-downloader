@@ -1,3 +1,3 @@
 graft kobodl/templates
-graft koobdl/commands
+graft kobodl/commands
 global-exclude *.pyc
