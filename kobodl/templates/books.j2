@@ -1,13 +1,17 @@
 
 {% include "header.html" %}
 <h1 class="text-4xl py-2">Books</h1>
+{% include "error.j2" %}
+{% include "success.j2" %}
 <table class="table-auto m-auto w-full">
   <thead>
     <tr class="text-left">
       <th class="p-2 pl-4"> Title </th>
       <th class="p-2 pl-4"> Author </th>
-      <th class="p-2 pl-4"> RevisionId </th>
       <th class="p-2 pl-4"> Owner </th>
+      {% if calibre.enabled %}
+        <th class="p-2 pl-4"> CalibreWeb </th>
+      {% endif %}
     </tr>
   </thead>
   <tbody>
@@ -16,7 +20,7 @@
       <td class="border px-4 p-1">
         {% if not book.Audiobook %}
           <a
-            href="/user/{{ book.Owner.UserKey }}/book/{{ book.RevisionId }}"
+            href="{{ url_for('downloadBook', userid=book.Owner.UserKey, productid=book.RevisionId) }}"
             class="text-blue-700"
           >
             {{ book.Title }}
@@ -29,8 +33,22 @@
         {% endif %}
       </td>
       <td class="border px-4 p-1">{{ book.Author }}</td>
-      <td class="border px-4 p-1">{{ book.RevisionId }}</td>
       <td class="border px-4 p-1">{{ book.Owner.Email }}</td>
+      {% if calibre.enabled %}
+      <td class="border p-1">
+        <form
+          action="{{ url_for('sendToCalibre', userid=book.Owner.UserKey, productid=book.RevisionId) }}"
+          method="post"
+        >
+          <button
+            class="px-4 mx-1 rounded text-sm bg-blue-500 hover:bg-blue-700 text-white font-bold"
+            type="submit"
+          >
+            Send to Calibre
+          </button>
+        </form>
+      </td>
+      {% endif %}
     </tr>
     {% endfor %}
   </tbody>
