@@ -4,6 +4,7 @@ from typing import List, Union
 
 from dataclasses_json import dataclass_json
 
+
 @dataclass_json
 @dataclasses.dataclass
 class CalibreWeb:

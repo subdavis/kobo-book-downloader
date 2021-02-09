@@ -1,4 +1,5 @@
 from typing import Union
+
 from kobodl.settings import Settings
 
 

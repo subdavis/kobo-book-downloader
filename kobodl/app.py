@@ -48,7 +48,8 @@ def getUserBooks(userid, error=None, success=None):
         abort(404)
     books = actions.ListBooks([user], False, None)
     calibre = Globals.Settings.UserList.calibre_web
-    return render_template('books.j2',
+    return render_template(
+        'books.j2',
         books=books,
         calibre=calibre,
         error=error,
@@ -80,11 +81,12 @@ def sendToCalibre(userid, productid):
     os.makedirs(outputDir, exist_ok=True)
     # GetBookOrBooks always returns an absolute path
     outputFileName = actions.GetBookOrBooks(user, outputDir, productId=productid)
-    req = Request('POST',
+    req = Request(
+        'POST',
         url=Globals.Settings.UserList.calibre_web.url,
         files={'btn-upload': open(outputFileName, 'rb')},
     )
-    if (Globals.Settings.UserList.calibre_web.username):
+    if Globals.Settings.UserList.calibre_web.username:
         req.auth = HTTPBasicAuth(
             Globals.Settings.UserList.calibre_web.username,
             Globals.Settings.UserList.calibre_web.password,
@@ -97,7 +99,9 @@ def sendToCalibre(userid, productid):
     except HTTPError as err:
         return getUserBooks(userid=userid, error=err)
     except json.decoder.JSONDecodeError:
-        return getUserBooks(userid=userid, error="Could not decode response.  Check your CalibreWeb Credentials.")
+        return getUserBooks(
+            userid=userid, error="Could not decode response.  Check your CalibreWeb Credentials."
+        )
     return getUserBooks(userid=userid, success=success)
 
 
