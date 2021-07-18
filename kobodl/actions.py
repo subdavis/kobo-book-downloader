@@ -53,7 +53,8 @@ def __MakeFileNameForBook(bookMetadata: dict) -> str:
         fileName = author + ' - '
     fileName += bookMetadata['Title']
     fileName = __SanitizeFileName(fileName)
-    return fileName
+    # Append a portion of revisionId to prevent name collisions.
+    return f"${fileName}_{bookMetadata['RevisionId'][:8]}"
 
 
 def __GetBookMetadata(entitlement: dict) -> Tuple[dict, BookType]:
