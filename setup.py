@@ -9,7 +9,7 @@ with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 setup(
     name='kobodl',
     author='Brandon Davis',
-    version='0.7.0',
+    version='0.7.1',
     author_email='kobodl@subdavis.com',
     url="https://github.com/subdavis/kobo-book-downloader",
     long_description=long_description,
@@ -23,6 +23,7 @@ setup(
         'dataclasses-json<0.6.0',
         'flask>=1.1.0',
         'pycryptodome<4',
+        'pyperclip',
         'requests>=2.25',
         'tabulate<0.9.0',
     ],

@@ -1,4 +1,5 @@
 import click
+import pyperclip
 from tabulate import tabulate
 
 from kobodl import actions, cli
@@ -71,7 +72,9 @@ def add(ctx, email, password):
     and paste it here.  It will be very long!
     """
     )
-    captcha = input('Captcha response: ').strip()
+    input('Press enter after copying the captcha code...')
+    captcha = pyperclip.paste().strip()
+    click.echo(f'Read captcha code from clipboard: {captcha}')
     actions.Login(user, password, captcha)
     Globals.Settings.UserList.users.append(user)
     Globals.Settings.Save()
