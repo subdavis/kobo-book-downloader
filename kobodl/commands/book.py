@@ -1,4 +1,6 @@
 import os
+from pathlib import Path
+from typing import List
 
 import click
 from tabulate import tabulate
@@ -33,11 +35,19 @@ def book():
     '--output-dir',
     type=click.Path(file_okay=False, dir_okay=True, writable=True),
     default='kobo_downloads',
+    help='default: kobo_downloads',
 )
 @click.option('-a', '--get-all', is_flag=True)
+@click.option(
+    '-f',
+    '--format-str',
+    type=click.STRING,
+    default=r'{Author} - {Title} {ShortRevisionId}',
+    help=r"default: '{Author} - {Title} {ShortRevisionId}'",
+)
 @click.argument('product-id', nargs=-1, type=click.STRING)
 @click.pass_obj
-def get(ctx, user, output_dir, get_all, product_id):
+def get(ctx, user, output_dir: Path, get_all: bool, format_str: str, product_id: List[str]):
     if len(Globals.Settings.UserList.users) == 0:
         click.echo('error: no users found.  Did you `kobodl user add`?', err=True)
         exit(1)
@@ -67,10 +77,10 @@ def get(ctx, user, output_dir, get_all, product_id):
 
     os.makedirs(output_dir, exist_ok=True)
     if get_all:
-        actions.GetBookOrBooks(usercls, output_dir)
+        actions.GetBookOrBooks(usercls, output_dir, formatStr=format_str)
     else:
         for pid in product_id:
-            output = actions.GetBookOrBooks(usercls, output_dir, productId=pid)
+            actions.GetBookOrBooks(usercls, output_dir, formatStr=format_str, productId=pid)
 
 
 @book.command(name='list', help='list books')

@@ -1,5 +1,6 @@
 import json
 import os
+import platform
 from typing import List, TextIO, Tuple, Union
 
 import click
@@ -32,29 +33,34 @@ def __GetBookAuthor(book: dict) -> str:
     return ' & '.join(authors)
 
 
-def __SanitizeFileName(fileName: str) -> str:
+def __SanitizeString(string: str) -> str:
     result = ''
-    for c in fileName:
+    for c in string:
         if c.isalnum() or ' ,;.!(){}[]#$\'-+@_'.find(c) >= 0:
             result += c
 
     result = result.strip(' .')
-    result = result[
-        :100
-    ]  # Limit the length -- mostly because of Windows. It would be better to do it on the full path using MAX_PATH.
+    if platform.system() == 'Windows':
+        # Limit the length -- mostly because of Windows. It would be better to do it on the full path using MAX_PATH.
+        result = result[:100]
     return result
 
 
-def __MakeFileNameForBook(bookMetadata: dict) -> str:
+def __MakeFileNameForBook(bookMetadata: dict, formatStr: str) -> str:
     '''filename without extension'''
     fileName = ''
-    author = __GetBookAuthor(bookMetadata)
-    if len(author) > 0:
-        fileName = author + ' - '
-    fileName += bookMetadata['Title']
-    fileName = __SanitizeFileName(fileName)
-    # Append a portion of revisionId to prevent name collisions.
-    return f"{fileName} {bookMetadata['RevisionId'][:8]}"
+    author = __SanitizeString(__GetBookAuthor(bookMetadata))
+    title = __SanitizeString(bookMetadata['Title'])
+
+    return formatStr.format_map(
+        {
+            **bookMetadata,
+            'Author': author,
+            'Title': title,
+            # Append a portion of revisionId to prevent name collisions.
+            'ShortRevisionId': bookMetadata['RevisionId'][:8],
+        }
+    )
 
 
 def __GetBookMetadata(entitlement: dict) -> Tuple[dict, BookType]:
@@ -163,7 +169,12 @@ def Login(user: User, password: str, captcha: str) -> None:
     kobo.Login(user.Email, password, captcha)
 
 
-def GetBookOrBooks(user: User, outputPath: str, productId: str = '') -> Union[None, str]:
+def GetBookOrBooks(
+    user: User,
+    outputPath: str,
+    formatStr: str = r'{Author} - {Title} {ShortRevisionId}',
+    productId: str = '',
+) -> Union[None, str]:
     """
     download 1 or all books to file
     returns output filepath if identifier is passed, otherwise returns None
@@ -192,7 +203,7 @@ def GetBookOrBooks(user: User, outputPath: str, productId: str = '') -> Union[No
             click.echo('Skipping subscribtion entity')
             continue
 
-        fileName = __MakeFileNameForBook(bookMetadata)
+        fileName = __MakeFileNameForBook(bookMetadata, formatStr)
         if book_type == BookType.EBOOK:
             # Audiobooks go in sub-directories
             # but epub files go directly in outputPath
