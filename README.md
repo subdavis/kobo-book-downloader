@@ -110,42 +110,42 @@ General usage
 ``` bash
 # Get started by adding one or more users
 # See `Getting a reCAPTCHA code` below for more help
-~$ kobodl user add
+kobodl user add
 
 # List users
-~$ kobodl user list
+kobodl user list
 
 # Remove a user
-~$ kobodl user rm email@domain.com
+kobodl user rm email@domain.com
 
 # List books
-~$ kobodl book list
+kobodl book list
 
 # List books for a single user
-~$ kobodl book list --user email@domain.com
+kobodl book list --user email@domain.com
 
 # List all books, including those marked as read
-~$ kobodl book list --read
+kobodl book list --read
 
 # Show book list help
-~$ kobodl book list --help
+kobodl book list --help
 
 # Download a single book with default options when only 1 user exists
 # default output directory is `./kobo_downloads` 
-~$ kobodl book get c1db3f5c-82da-4dda-9d81-fa718d5d1d16
+kobodl book get c1db3f5c-82da-4dda-9d81-fa718d5d1d16
 
 # Download a single book with advanced options
-~$ kobodl book get \
+kobodl book get \
   --user email@domain.com \
   --output-dir /path/to/download_directory \
   --format-str '{Title}' \
   c1db3f5c-82da-4dda-9d81-fa718d5d1d16
 
 # Download ALL books with default options when only 1 user exists
-~$ kobodl book get --get-all
+kobodl book get --get-all
 
 # Download ALL books with advanced options
-~$ kobodl book get \
+kobodl book get \
   --user email@domain.com \
   --output-dir /path/to/download_directory \
   --format-str '{Title}' \
@@ -155,7 +155,7 @@ General usage
 Running the web UI
 
 ``` bash
-~$ kobodl serve
+kobodl serve
  * Serving Flask app "kobodl.app" (lazy loading)
  * Environment: production
    WARNING: This is a development server. Do not use it in a production deployment.
@@ -168,16 +168,19 @@ Global options
 
 ``` bash
 # argument format
-~$ kobodl [OPTIONS] COMMAND [ARGS]...
+kobodl [OPTIONS] COMMAND [ARGS]...
 
 # set python tabulate formatting style.
-~$ kobodl --fmt "pretty" COMMAND [ARGS]...
+kobodl --fmt "pretty" COMMAND [ARGS]...
 
 # set config path if different than ~/.config/kobodl.json
-~$ kobodl --config /path/to/kobodl.json COMMAND [ARGS]...
+kobodl --config /path/to/kobodl.json COMMAND [ARGS]...
 
 # get version
-~$ kobodl --version
+kobodl --version
+
+# enable debugging, prints to "debug.log"
+kobodl --debug [OPTIONS] COMMAND [ARGS]...
 ```
 
 ## Getting a reCAPTCHA code
@@ -219,6 +222,10 @@ Try to download the book individually using `kobodl book get <revision-id>`, rep
 > I can't log in.  I get a message saying "The page format might have changed"
 
 This happens from time to time, maybe once or twice a year.  Kobo changes their login page and makes it hard for the tool to parse out the necessary information.  Please open an issue.
+
+> Something else is going wrong!
+
+Try enabling debugging.  Run `kobodl --debug book get` (for example), which will dump a lot of data into a file called `debug.log`. Email me this file. Do not post it in public on an issue because it will contain information about your account.  My email address can be found on my [github profile page](https://github.com/subdavis).
 
 ## Development
 

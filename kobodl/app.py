@@ -1,7 +1,7 @@
 import json.decoder
 import os
 
-from flask import Flask, abort, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, abort, redirect, render_template, request, send_from_directory
 from requests import Request, Session
 from requests.auth import HTTPBasicAuth
 from requests.exceptions import HTTPError

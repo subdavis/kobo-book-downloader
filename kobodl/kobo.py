@@ -14,6 +14,7 @@ import requests
 from bs4 import BeautifulSoup
 from dataclasses_json import dataclass_json
 
+from kobodl.debug import debug_data
 from kobodl.globals import Globals
 from kobodl.koboDrmRemover import KoboDrmRemover
 from kobodl.settings import User
@@ -78,6 +79,7 @@ class Kobo:
         response = self.Session.post(
             "https://storeapi.kobo.com/v1/auth/refresh", json=postData, headers=headers
         )
+        debug_data("RefreshAuth", postData, response.text)
         response.raise_for_status()
         jsonResponse = response.json()
 
@@ -99,6 +101,7 @@ class Kobo:
         # The hook's workflow is based on this:
         # https://github.com/requests/toolbelt/blob/master/requests_toolbelt/auth/http_proxy_digest.py
         def ReauthenticationHook(r, *args, **kwargs):
+            debug_data("Response", r.text)
             if r.status_code != requests.codes.unauthorized:  # 401
                 return
 
@@ -171,6 +174,7 @@ class Kobo:
         if len(syncToken) > 0:
             headers["x-kobo-synctoken"] = syncToken
 
+        debug_data("GetMyBookListPage")
         response = self.Session.get(url, headers=headers, hooks=hooks)
         response.raise_for_status()
         bookList = response.json()
@@ -188,6 +192,7 @@ class Kobo:
         headers = self.__GetHeaderWithAccessToken()
         hooks = self.__GetReauthenticationHook()
 
+        debug_data("GetContentAccessBook")
         response = self.Session.get(url, params=params, headers=headers, hooks=hooks)
         response.raise_for_status()
         jsonResponse = response.json()
@@ -306,6 +311,7 @@ class Kobo:
             postData["UserKey"] = userKey
 
         response = self.Session.post("https://storeapi.kobo.com/v1/auth/device", json=postData)
+        debug_data("AuthenticateDevice", response.text)
         response.raise_for_status()
         jsonResponse = response.json()
 
@@ -395,6 +401,7 @@ class Kobo:
                 "PageSize": 100,  # 100 is the default if PageSize is not specified.
             }
 
+            debug_data("GetMyWishList")
             response = self.Session.get(url, params=params, headers=headers, hooks=hooks)
             response.raise_for_status()
             wishList = response.json()
@@ -412,7 +419,7 @@ class Kobo:
         ebook_url = self.InitializationSettings["book"].replace("{ProductId}", productId)
         headers = self.__GetHeaderWithAccessToken()
         hooks = self.__GetReauthenticationHook()
-
+        debug_data("GetBookInfo")
         try:
             response = self.Session.get(ebook_url, headers=headers, hooks=hooks)
             response.raise_for_status()
@@ -428,6 +435,7 @@ class Kobo:
         """
         headers = self.__GetHeaderWithAccessToken()
         hooks = self.__GetReauthenticationHook()
+        debug_data("LoadInitializationSettings")
         response = self.Session.get(
             "https://storeapi.kobo.com/v1/initialization", headers=headers, hooks=hooks
         )
@@ -457,6 +465,7 @@ class Kobo:
         }
 
         response = self.Session.post(signInUrl, data=postData)
+        debug_data("Login", response.text)
         response.raise_for_status()
         htmlResponse = response.text
 
