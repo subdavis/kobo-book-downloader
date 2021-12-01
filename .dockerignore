@@ -3,6 +3,10 @@
 *.egg-info/
 .vscode
 .eggs/
+.tox
+.mypy_cache
+.github
+Dockerfile
 venv/
 kobo_downloads/
 build/

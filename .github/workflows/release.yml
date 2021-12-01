@@ -15,9 +15,9 @@ jobs:
           python-version: '3.8'
           architecture: 'x64'
 
-      - run: pip install -r dev-requirements.txt
-
-      - run: python setup.py sdist bdist_wheel
+      - run: pip install poetry twine
+      - run: poetry install
+      - run: poetry build
       - run: twine upload dist/*
         env:
           TWINE_USERNAME: __token__

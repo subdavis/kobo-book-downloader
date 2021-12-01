@@ -84,6 +84,8 @@ wget "https://github.com/subdavis/kobo-book-downloader/releases/latest/download/
 
 ### docker
 
+> *Note*: for rootless docker installations (uncommon), omit the `--user` argument.
+
 ``` bash
 # list users
 docker run --rm -it --user $(id -u):$(id -g) \
@@ -229,20 +231,24 @@ Try enabling debugging.  Run `kobodl --debug book get` (for example), which will
 
 ## Development
 
-To get set up for development:
+This project uses [Python Poetry](https://python-poetry.org/).
 
-1. clone this repo
-1. create a virtual environment named `kobodl` with pyenv (optional)
-1. `kobodl` should be available inside the virtual env
+```bash
+pip install poetry
+git clone https://github.com/subdavis/kobo-book-downloader
+poetry install
 
-## Linting
+# Run command line app
+poetry run kobodl
 
-VS Code is configured to do this for you. Otherwise, run the following:
+# Run linting
+poetry run tox -e lint
 
-``` bash
-pip3 install -r dev-requirements.txt
-isort -rc kobodl/*
-black .
+# Run standalone bundle generation
+poetry run tox -e buildcli
+
+# Run type checks
+poetry run tox -e type
 ```
 
 ## Notes
