@@ -47,13 +47,16 @@ class KoboException(Exception):
 
 class Kobo:
     Affiliate = "Kobo"
-    ApplicationVersion = "8.11.24971"
+    ApplicationVersion = "8.31.1.29820"
     DefaultPlatformId = "00000000-0000-0000-0000-000000004000"
     DisplayProfile = "Android"
 
     def __init__(self, user: User):
         self.InitializationSettings = {}
         self.Session = requests.session()
+        self.Session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36",
+        })
         self.user = user
 
     # PRIVATE METHODS
@@ -62,7 +65,7 @@ class Kobo:
     # functions that doesn't need authorization.
     def __GetHeaderWithAccessToken(self) -> dict:
         authorization = "Bearer " + self.user.AccessToken
-        headers = {"Authorization": authorization}
+        headers = { "Authorization": authorization }
         return headers
 
     def __RefreshAuthentication(self) -> None:
@@ -74,6 +77,7 @@ class Kobo:
             "PlatformId": Kobo.DefaultPlatformId,
             "RefreshToken": self.user.RefreshToken,
         }
+        debug_data("Send Refresh", postData, headers)
 
         # The reauthentication hook is intentionally not set.
         response = self.Session.post(
@@ -101,7 +105,7 @@ class Kobo:
         # The hook's workflow is based on this:
         # https://github.com/requests/toolbelt/blob/master/requests_toolbelt/auth/http_proxy_digest.py
         def ReauthenticationHook(r, *args, **kwargs):
-            debug_data("Response", r.text)
+            debug_data("Reauthentication Hook Response", r.text)
             if r.status_code != requests.codes.unauthorized:  # 401
                 return
 
@@ -139,9 +143,11 @@ class Kobo:
             "pwsdid": self.user.DeviceId,
         }
 
+        debug_data("Fetching Login params", signInUrl, params)
         response = self.Session.get(signInUrl, params=params)
         response.raise_for_status()
         htmlResponse = response.text
+        debug_data("Extra Login Params", htmlResponse)
 
         # The link can be found in the response ('<a class="kobo-link partner-option kobo"') but this will do for now.
         parsed = urllib.parse.urlparse(signInUrl)
@@ -435,7 +441,7 @@ class Kobo:
         """
         headers = self.__GetHeaderWithAccessToken()
         hooks = self.__GetReauthenticationHook()
-        debug_data("LoadInitializationSettings")
+        debug_data("LoadInitializationSettings", headers)
         response = self.Session.get(
             "https://storeapi.kobo.com/v1/initialization", headers=headers, hooks=hooks
         )
@@ -462,9 +468,16 @@ class Kobo:
             "LogInModel.UserName": email,
             "LogInModel.Password": password,
             "g-recaptcha-response": captcha,
+            "h-captcha-response": captcha,
         }
-
-        response = self.Session.post(signInUrl, data=postData)
+        debug_data("Begin Login", signInUrl, postData)
+        headers = {
+            "Referrer": f"https://authorize.kobo.com/us/en/signin/signin/kobo?workflowId={workflowId}",
+            "Host": "authorize.kobo.com",
+            "Origin": "https://authorize.kobo.com",
+        }
+        headers = {}
+        response = self.Session.post(signInUrl, data=postData, headers=headers)
         debug_data("Login", response.text)
         response.raise_for_status()
         htmlResponse = response.text
