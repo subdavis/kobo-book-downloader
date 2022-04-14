@@ -50,10 +50,14 @@ class Kobo:
     ApplicationVersion = "8.11.24971"
     DefaultPlatformId = "00000000-0000-0000-0000-000000004000"
     DisplayProfile = "Android"
+    UserAgent = "Mozilla/5.0 (Linux; Android 6.0; Google Nexus 7 2013 Build/MRA58K; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.186 Safari/537.36 KoboApp/8.40.2.29861 KoboPlatform Id/00000000-0000-0000-0000-000000004000 KoboAffiliate/Kobo KoboBuildFlavor/global"
 
     def __init__(self, user: User):
         self.InitializationSettings = {}
         self.Session = requests.session()
+        self.Session.headers.update({
+            "User-Agent": Kobo.UserAgent
+        })
         self.user = user
 
     # PRIVATE METHODS
@@ -462,6 +466,7 @@ class Kobo:
             "LogInModel.UserName": email,
             "LogInModel.Password": password,
             "g-recaptcha-response": captcha,
+            "h-captcha-response": captcha,
         }
 
         response = self.Session.post(signInUrl, data=postData)
