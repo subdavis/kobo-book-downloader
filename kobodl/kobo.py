@@ -149,7 +149,7 @@ class Kobo:
 
         # The link can be found in the response ('<a class="kobo-link partner-option kobo"') but this will do for now.
         parsed = urllib.parse.urlparse(signInUrl)
-        koboSignInUrl = parsed._replace(query=None, path="/ww/en/signin/signin/kobo").geturl()
+        koboSignInUrl = parsed._replace(query=None, path="/ww/en/signin/signin").geturl()
 
         match = re.search(r"""\?workflowId=([^"]{36})""", htmlResponse)
         if match is None:
