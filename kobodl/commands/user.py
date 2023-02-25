@@ -45,9 +45,10 @@ def list(ctx, identifier):
 
 @user.command(name='add', help='add new user')
 @click.option('--email', prompt=True, hide_input=False, type=click.STRING, help="kobo.com email.")
+@click.option('--captcha', type=click.STRING, help="kobo.com captcha.")
 @click.password_option(help="kobo.com password (not stored)")
 @click.pass_obj
-def add(ctx, email, password):
+def add(ctx, email, captcha, password):
     user = User(Email=email)
     click.echo(
         """
@@ -72,9 +73,10 @@ def add(ctx, email, password):
     and paste it here.  It will be very long!
     """
     )
-    input('Press enter after copying the captcha code...')
-    captcha = pyperclip.paste().strip()
-    click.echo(f'Read captcha code from clipboard: {captcha}')
+    if not captcha:
+        input('Press enter after copying the captcha code...')
+        captcha = pyperclip.paste().strip()
+        click.echo(f'Read captcha code from clipboard: {captcha}')
     actions.Login(user, password, captcha)
     Globals.Settings.UserList.users.append(user)
     Globals.Settings.Save()

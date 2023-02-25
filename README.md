@@ -23,7 +23,7 @@ It doesn't work with audiobooks and is a little harder to set up, but I think it
 
 This is a hard fork of [kobo-book-downloader](https://github.com/TnS-hun/kobo-book-downloader), a command line tool to download and remove Digital Rights Management (DRM) protection from media legally purchased from [Rakuten Kobo](https://www.kobo.com/). The resulting [EPUB](https://en.wikipedia.org/wiki/EPUB) files can be read with, amongst others, [KOReader](https://github.com/koreader/koreader).
 
-> **NOTE:** You must have a kobo email login for this tool to work (you can't use an external provider like Google or Facebook). However, you can create a NEW kobo account and link it with your existing account on the user profile page. Go to `My Account -> Account Settings` to link your new kobo login.
+> **NOTE:** You must have a kobo email login.  See "I can't log in" in the troubleshooting section for how to workaround this requirement.
 
 ## Features
 
@@ -228,6 +228,18 @@ You must add your CalibreWeb server and user details directly in kobodl.json.  M
 
 ## Troubleshooting
 
+> I can't log in.  My credentials are rejected.
+
+You must have a kobo email login for this tool to work (you can't use an external provider like Google or Facebook). However, you can create a NEW kobo account and link it with your existing account on the user profile page. Go to `My Account -> Account Settings` to link your new kobo login.
+
+> I can't log in.  I get a message saying "The page format might have changed"
+
+This happens from time to time, maybe once or twice a year.  Kobo changes their login page and makes it hard for the tool to parse out the necessary information.  Please open an issue.
+
+> I can't log in, there's a problem with reading the captcha
+
+The clipboard interaction doesn't work for everyone.  Try supplying the captcha using `koobdl user add --captch "YOUR_CAPTCHA_CODE"`.
+
 > Some of my books are missing!
 
 Try `kobodl book list --read` to show all "finished" and "archived" books.  You can manage your book status on [the library page](https://kobo.com/library).  Try changing the status using the "..." button.
@@ -235,10 +247,6 @@ Try `kobodl book list --read` to show all "finished" and "archived" books.  You 
 > I see a mesage about "skipping _____" when I download all.
 
 Try to download the book individually using `kobodl book get <revision-id>`, replacing `revision-id` with the UUID from the list table.
-
-> I can't log in.  I get a message saying "The page format might have changed"
-
-This happens from time to time, maybe once or twice a year.  Kobo changes their login page and makes it hard for the tool to parse out the necessary information.  Please open an issue.
 
 > Something else is going wrong!
 
