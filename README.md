@@ -251,6 +251,7 @@ This project uses [Python Poetry](https://python-poetry.org/).
 ```bash
 pip install poetry
 git clone https://github.com/subdavis/kobo-book-downloader
+cd kobo-book-downloader
 poetry install
 
 # Run command line app
