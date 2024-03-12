@@ -4,7 +4,7 @@ WORKDIR /opt/kobodl/src
 ENV PATH="/opt/kobodl/local/venv/bin:$PATH"
 ENV VIRTUAL_ENV="/opt/kobodl/local/venv"
 
-RUN apk add --no-cache gcc libc-dev libffi-dev
+RUN apk add --no-cache gcc libc-dev libffi-dev ffmpeg
 ADD https://install.python-poetry.org /install-poetry.py
 RUN POETRY_VERSION=1.1.7 POETRY_HOME=/opt/kobodl/local python /install-poetry.py
 
