@@ -306,7 +306,7 @@ def GetBookOrBooks(
             and (
                 generateAudiobook
                 and book_type == BookType.AUDIOBOOK
-                and os.path.exists(os.path.join(outputFilePath, f'{filename}.m4b'))
+                and os.path.exists(os.path.join(outputFilePath, f'{fileName}.m4b'))
             )
         ):
             # when downloading ALL books, skip books we've downloaded before
@@ -343,7 +343,7 @@ def GetBookOrBooks(
         # Create final audiobook file
         if book_type == BookType.AUDIOBOOK and generateAudiobook:
             try:
-                __CreateM4BFile(outputFilePath, filename, bookMetadata)
+                __CreateM4BFile(outputFilePath, fileName, bookMetadata)
             except Exception as e:
                 click.echo(f'Failed to create audiobook file: {str(e)}', err=True)
 
