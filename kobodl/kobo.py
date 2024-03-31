@@ -324,20 +324,18 @@ date={bookMetadata.get("PublicationDate")}
         filesHandler = open(os.path.join(outputPath, "files.txt"), "w")
 
         start = 0
-        for item in data['Spine']:
-            filename = f'{item["Id"]:03} - {data["Navigation"][item["Id"]-1]["Title"]}.{item["FileExtension"]}'
+        for idx, item in enumerate(data['Navigation']):
+            spine = data['Spine'][item['PartId'] - 1]
+            filename = f'{spine["Id"]:03}.{spine["FileExtension"]}'
             metadataHandler.write(
-                self.__createFFMpegChapter(
-                    start, item['Duration'] * 1000, data["Navigation"][item["Id"] - 1]["Title"]
-                )
-                + '\n\n'
+                self.__createFFMpegChapter(start, spine['Duration'] * 1000, item["Title"]) + '\n\n'
             )
-            start += item['Duration'] * 1000
-            filesHandler.write(f"file '{filename}'\n")
+            start += spine['Duration'] * 1000
 
             # Download chapter if missing
             if not os.path.isfile(os.path.join(outputPath, filename)):
-                response = self.Session.get(item['Url'], stream=True)
+                filesHandler.write(f"file '{filename}'\n")
+                response = self.Session.get(spine['Url'], stream=True)
                 filePath = os.path.join(outputPath, filename)
                 with open(filePath, "wb") as f:
                     for chunk in response.iter_content(chunk_size=1024 * 256):
