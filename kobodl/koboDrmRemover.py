@@ -36,4 +36,7 @@ class KoboDrmRemover:
                     contentKeyBase64 = contentKeys.get(filename, None)
                     if contentKeyBase64 is not None:
                         contents = self.__DecryptContents(contents, contentKeyBase64)
-                    outputZip.writestr(filename, contents)
+                    if filename == "mimetype":
+                        outputZip.writestr(filename, contents, compress_type=zipfile.ZIP_STORED)
+                    else:
+                        outputZip.writestr(filename, contents)
