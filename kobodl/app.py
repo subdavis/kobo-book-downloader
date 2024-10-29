@@ -41,6 +41,16 @@ def users():
     return render_template('users.j2', users=users, error=error)
 
 
+@app.route('/user/<userid>/remove', methods=['POST'])
+def deleteUser(userid):
+    user = Globals.Settings.UserList.getUser(userid)
+    if not user:
+        abort(404)
+    Globals.Settings.UserList.users.remove(user)
+    Globals.Settings.Save()
+    return redirect('/user')
+
+
 @app.route('/user/<userid>/book', methods=['GET'])
 def getUserBooks(userid, error=None, success=None):
     user = Globals.Settings.UserList.getUser(userid)

@@ -18,6 +18,11 @@
       <td class="border px-4 p-1">
         <a href="/user/{{ user.UserKey }}/book" class="text-blue-700">books</a>
       </td>
+      <td class="border px-4 p-1 cursor-pointer">
+        <form method="POST" action="/user/{{ user.UserKey }}/remove">
+          <input type="submit" value="Delete User" class="cursor-pointer">
+        </form>
+      </td>
     </tr>
     {% endfor %}
   </tbody>
