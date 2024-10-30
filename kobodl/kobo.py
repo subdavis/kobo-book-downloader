@@ -6,6 +6,9 @@ import re
 import sys
 import urllib
 import uuid
+import cloudscraper
+import json
+
 from enum import Enum
 from shutil import copyfile
 from typing import Dict, Tuple
@@ -50,12 +53,11 @@ class Kobo:
     ApplicationVersion = "8.11.24971"
     DefaultPlatformId = "00000000-0000-0000-0000-000000004000"
     DisplayProfile = "Android"
-    UserAgent = "Mozilla/5.0 (Linux; Android 6.0; Google Nexus 7 2013 Build/MRA58K; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.186 Safari/537.36 KoboApp/8.40.2.29861 KoboPlatform Id/00000000-0000-0000-0000-000000004000 KoboAffiliate/Kobo KoboBuildFlavor/global"
 
     def __init__(self, user: User):
         self.InitializationSettings = {}
         self.Session = requests.session()
-        self.Session.headers.update({"User-Agent": Kobo.UserAgent})
+        self.scraper = cloudscraper.create_scraper() #
         self.user = user
 
     # PRIVATE METHODS
@@ -147,7 +149,7 @@ class Kobo:
 
         # The link can be found in the response ('<a class="kobo-link partner-option kobo"') but this will do for now.
         parsed = urllib.parse.urlparse(signInUrl)
-        koboSignInUrl = parsed._replace(query=None, path="/ww/en/signin/signin").geturl()
+        koboSignInUrl = parsed._replace(query=None, path="/ww/en/signin/signin/kobo").geturl()
 
         match = re.search(r"""\?workflowId=([^"]{36})""", htmlResponse)
         if match is None:
@@ -193,7 +195,6 @@ class Kobo:
         params = {"DisplayProfile": displayProfile}
         headers = self.__GetHeaderWithAccessToken()
         hooks = self.__GetReauthenticationHook()
-
         debug_data("GetContentAccessBook")
         response = self.Session.get(url, params=params, headers=headers, hooks=hooks)
         response.raise_for_status()
@@ -218,7 +219,7 @@ class Kobo:
         if 'ContentUrls' in keys:
             jsonContentUrls = bookMetadata.get("ContentUrls")
         if 'DownloadUrls' in keys:
-            jsonContentUrls = bookMetadata.get('DownloadUrls')
+            jsonContentUrls = bookMetadata['DownloadUrls']
         return jsonContentUrls
 
     def __GetDownloadInfo(
@@ -227,11 +228,7 @@ class Kobo:
         displayProfile = displayProfile or Kobo.DisplayProfile
         productId = Kobo.GetProductId(bookMetadata)
 
-        if not isAudiobook:
-            jsonResponse = self.__GetContentAccessBook(productId, displayProfile)
-            jsonContentUrls = Kobo.__getContentUrls(jsonResponse)
-        else:
-            jsonContentUrls = Kobo.__getContentUrls(bookMetadata)
+        jsonContentUrls = Kobo.__getContentUrls(bookMetadata)
 
         if jsonContentUrls is None:
             raise KoboException(f"Download URL can't be found for product {productId}.")
@@ -241,7 +238,7 @@ class Kobo:
                 f"Download URL list is empty for product '{productId}'. If this is an archived book then it must be unarchived first on the Kobo website (https://www.kobo.com/help/en-US/article/1799/restoring-deleted-books-or-magazines)."
             )
 
-        for jsonContentUrl in jsonContentUrls:
+        for jsonContentUrl in bookMetadata['DownloadUrls']:
             drm_keys = ['DrmType', 'DRMType']
             drm_types = ["KDRM", "AdobeDrm"]
             # will be empty (falsey) if the drm listed doesn't match one of the drm_types
@@ -254,33 +251,38 @@ class Kobo:
             download_keys = ['DownloadUrl', 'Url']
             for key in download_keys:
                 download_url = jsonContentUrl.get(key, None)
-                if download_url:
+                if download_url and (jsonContentUrl['DrmType'] == 'KDRM' or jsonContentUrl['DrmType'] == 'SignedNoDrm' or jsonContentUrl['DrmType'] == 'None'):
                     return download_url, hasDrm
 
         message = f"Download URL for supported formats can't be found for product '{productId}'.\n"
         message += "Available formats:"
         for jsonContentUrl in jsonContentUrls:
-            message += f'\nDRMType: \'{jsonContentUrl["DRMType"]}\', UrlFormat: \'{jsonContentUrl["UrlFormat"]}\''
+            message += f'\nDRMType: \'{jsonContentUrl["DrmType"]}\', UrlFormat: \'{jsonContentUrl["UrlFormat"]}\''
         raise KoboException(message)
 
     def __DownloadToFile(self, url, outputPath: str) -> None:
-        response = self.Session.get(url, stream=True)
+
+        response = self.scraper.get(url)
         response.raise_for_status()
         with open(outputPath, "wb") as f:
             for chunk in response.iter_content(chunk_size=1024 * 256):
                 f.write(chunk)
 
-    def __DownloadAudiobook(self, url, outputPath: str) -> None:
-        response = self.Session.get(url)
+    def __DownloadAudiobook(self, url, outputPath: str, bookMetadata) -> None:
+        response = self.scraper.get(url)
+        #response = self.Session.get(url)
 
         response.raise_for_status()
         if not os.path.isdir(outputPath):
             os.mkdir(outputPath)
         data = response.json()
-
+        data["metadata"] = bookMetadata
+        with open(outputPath+"/metadata.json", "w") as f:
+            f.write(json.dumps(data))
+            f.close()
         for item in data['Spine']:
             fileNum = int(item['Id']) + 1
-            response = self.Session.get(item['Url'], stream=True)
+            response = self.scraper.get(item['Url'], stream=True)
             filePath = os.path.join(outputPath, str(fileNum) + '.' + item['FileExtension'])
             with open(filePath, "wb") as f:
                 for chunk in response.iter_content(chunk_size=1024 * 256):
@@ -336,13 +338,14 @@ class Kobo:
     # Downloading archived books is not possible, the "content_access_book" API endpoint returns with empty ContentKeys
     # and ContentUrls for them.
     def Download(self, bookMetadata: dict, isAudiobook: bool, outputPath: str) -> None:
+
         downloadUrl, hasDrm = self.__GetDownloadInfo(bookMetadata, isAudiobook)
         revisionId = Kobo.GetProductId(bookMetadata)
         temporaryOutputPath = outputPath + ".downloading"
 
         try:
             if isAudiobook:
-                self.__DownloadAudiobook(downloadUrl, outputPath)
+                self.__DownloadAudiobook(downloadUrl, outputPath, bookMetadata)
             else:
                 self.__DownloadToFile(downloadUrl, temporaryOutputPath)
 
@@ -374,6 +377,7 @@ class Kobo:
     # "library_items" instead to get the My Books list, but "library_items" gives back less info (even with the
     # embed=ProductMetadata query parameter set).
     def GetMyBookList(self) -> list:
+
         if not self.user.AreAuthenticationSettingsSet():
             raise NotAuthenticatedException(f'User {self.user.Email} is not authenticated')
 
@@ -462,7 +466,6 @@ class Kobo:
             "LogInModel.UserName": email,
             "LogInModel.Password": password,
             "g-recaptcha-response": captcha,
-            "h-captcha-response": captcha,
         }
 
         response = self.Session.post(signInUrl, data=postData)
