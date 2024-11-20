@@ -52,7 +52,7 @@ class Kobo:
     ApplicationVersion = "10.1.4.39810"
     DefaultPlatformId = "00000000-0000-0000-0000-000000004000"
     DisplayProfile = "Android"
-    UserAgent = "Mozilla/5.0 (Linux; Android 6.0; Google Nexus 7 2013 Build/MRA58K; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.186 Safari/537.36 KoboApp/10.1.4.39810 KoboPlatform Id/00000000-0000-0000-0000-000000004000 KoboAffiliate/KoboApp KoboBuildFlavor/global"
+    UserAgent = "Mozilla/5.0 (Linux; Android 6.0; Google Nexus 7 2013 Build/MRA58K; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.186 Safari/537.36 KoboApp/8.40.2.29861 KoboPlatform Id/00000000-0000-0000-0000-000000004000 KoboAffiliate/Kobo KoboBuildFlavor/global"
 
     def __init__(self, user: User):
         self.InitializationSettings = {}
@@ -161,7 +161,7 @@ class Kobo:
         response = opener.open(request)
         htmlResponse = str(response.read())
 
-        cookie_string = '; '.join([f'{cookie.name}={cookie.value}' for cookie in cookie_jar])
+        authCookie = '; '.join([f'{cookie.name}={cookie.value}' for cookie in cookie_jar])
 
         # The link can be found in the response ('<a class="kobo-link partner-option kobo"') but this will do for now.
         parsed = urllib.parse.urlparse(signInUrl)
@@ -184,7 +184,7 @@ class Kobo:
             )
         requestVerificationToken = html.unescape(match.group(1))
 
-        return koboSignInUrl, workflowId, requestVerificationToken, cookie_string
+        return koboSignInUrl, workflowId, requestVerificationToken, authCookie
 
     def __GetMyBookListPage(self, syncToken: str) -> Tuple[list, str]:
         url = self.InitializationSettings["library_sync"]
@@ -469,7 +469,7 @@ class Kobo:
             signInUrl,
             workflowId,
             requestVerificationToken,
-            cookie_string
+            authCookie
         ) = self.__GetExtraLoginParameters()
 
         postData = {
@@ -492,7 +492,7 @@ class Kobo:
             'Priority': 'u=4', 'TE': 'trailers',
             'Pragma': 'no-cache', 'Cache-Control':
             'no-cache',
-            'Cookie': cookie_string
+            'Cookie': authCookie
         }
 
         postData = urllib.parse.urlencode(postData).encode()
@@ -527,7 +527,7 @@ class Kobo:
         userKey = parsedQueries["userKey"][0]
 
         cookie = SimpleCookie()
-        cookie.load(cookie_string)
+        cookie.load(authCookie)
 
         def get_cookie_value(cookie_name):
             if cookie_name in cookie:
