@@ -5,6 +5,8 @@ import os
 import re
 import sys
 import urllib
+import http.cookiejar
+from http.cookies import SimpleCookie
 import uuid
 from enum import Enum
 from shutil import copyfile
@@ -47,10 +49,10 @@ class KoboException(Exception):
 
 class Kobo:
     Affiliate = "Kobo"
-    ApplicationVersion = "8.11.24971"
+    ApplicationVersion = "10.1.4.39810"
     DefaultPlatformId = "00000000-0000-0000-0000-000000004000"
     DisplayProfile = "Android"
-    UserAgent = "Mozilla/5.0 (Linux; Android 6.0; Google Nexus 7 2013 Build/MRA58K; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.186 Safari/537.36 KoboApp/8.40.2.29861 KoboPlatform Id/00000000-0000-0000-0000-000000004000 KoboAffiliate/Kobo KoboBuildFlavor/global"
+    UserAgent = "Mozilla/5.0 (Linux; Android 6.0; Google Nexus 7 2013 Build/MRA58K; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.186 Safari/537.36 KoboApp/10.1.4.39810 KoboPlatform Id/00000000-0000-0000-0000-000000004000 KoboAffiliate/KoboApp KoboBuildFlavor/global"
 
     def __init__(self, user: User):
         self.InitializationSettings = {}
@@ -140,10 +142,26 @@ class Kobo:
             "pwspid": Kobo.DefaultPlatformId,
             "pwsdid": self.user.DeviceId,
         }
+        headers = {
+            'User-Agent': Kobo.UserAgent,
+            'Accept': '*/*',
+            'Connection': 'keep-alive',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'no-cors',
+            'Sec-Fetch-Site': 'same-origin',
+            'Priority': 'u=4', 'TE': 'trailers',
+            'Pragma': 'no-cache', 'Cache-Control':
+            'no-cache'
+        }
+        query_string = urllib.parse.urlencode(params)
+        signInUrl += "&" + query_string
+        cookie_jar = http.cookiejar.CookieJar()
+        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
+        request = urllib.request.Request(signInUrl, headers=headers)
+        response = opener.open(request)
+        htmlResponse = str(response.read())
 
-        response = self.Session.get(signInUrl, params=params)
-        response.raise_for_status()
-        htmlResponse = response.text
+        cookie_string = '; '.join([f'{cookie.name}={cookie.value}' for cookie in cookie_jar])
 
         # The link can be found in the response ('<a class="kobo-link partner-option kobo"') but this will do for now.
         parsed = urllib.parse.urlparse(signInUrl)
@@ -166,7 +184,7 @@ class Kobo:
             )
         requestVerificationToken = html.unescape(match.group(1))
 
-        return koboSignInUrl, workflowId, requestVerificationToken
+        return koboSignInUrl, workflowId, requestVerificationToken, cookie_string
 
     def __GetMyBookListPage(self, syncToken: str) -> Tuple[list, str]:
         url = self.InitializationSettings["library_sync"]
@@ -175,7 +193,6 @@ class Kobo:
 
         if len(syncToken) > 0:
             headers["x-kobo-synctoken"] = syncToken
-
         debug_data("GetMyBookListPage")
         response = self.Session.get(url, headers=headers, hooks=hooks)
         response.raise_for_status()
@@ -312,7 +329,7 @@ class Kobo:
         if len(userKey) > 0:
             postData["UserKey"] = userKey
 
-        response = self.Session.post("https://storeapi.kobo.com/v1/auth/device", json=postData)
+        response = self.Session.post("https://storeapi.kobo.com/v1/auth/device", json=postData, headers=self.Session.headers)
         debug_data("AuthenticateDevice", response.text)
         response.raise_for_status()
         jsonResponse = response.json()
@@ -452,12 +469,12 @@ class Kobo:
             signInUrl,
             workflowId,
             requestVerificationToken,
+            cookie_string
         ) = self.__GetExtraLoginParameters()
 
         postData = {
             "LogInModel.WorkflowId": workflowId,
             "LogInModel.Provider": Kobo.Affiliate,
-            "ReturnUrl": "",
             "__RequestVerificationToken": requestVerificationToken,
             "LogInModel.UserName": email,
             "LogInModel.Password": password,
@@ -465,10 +482,23 @@ class Kobo:
             "h-captcha-response": captcha,
         }
 
-        response = self.Session.post(signInUrl, data=postData)
-        debug_data("Login", response.text)
-        response.raise_for_status()
-        htmlResponse = response.text
+        headers = {
+            'User-Agent': Kobo.UserAgent,
+            'Accept': '*/*',
+            'Connection': 'keep-alive',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'no-cors',
+            'Sec-Fetch-Site': 'same-origin',
+            'Priority': 'u=4', 'TE': 'trailers',
+            'Pragma': 'no-cache', 'Cache-Control':
+            'no-cache',
+            'Cookie': cookie_string
+        }
+
+        postData = urllib.parse.urlencode(postData).encode()
+        request = urllib.request.Request(signInUrl, data=postData, headers=headers)
+        response = urllib.request.urlopen(request)
+        htmlResponse = str(response.read())
 
         match = re.search(r"'(kobo://UserAuthenticated\?[^']+)';", htmlResponse)
         if match is None:
@@ -496,4 +526,19 @@ class Kobo:
         ]  # We don't call self.Settings.Save here, AuthenticateDevice will do that if it succeeds.
         userKey = parsedQueries["userKey"][0]
 
+        cookie = SimpleCookie()
+        cookie.load(cookie_string)
+
+        def get_cookie_value(cookie_name):
+            if cookie_name in cookie:
+                return cookie[cookie_name].value
+            return None
+
+        url = match.group(1)
+        parsed = urllib.parse.urlparse(url)
+        parsedQueries = urllib.parse.parse_qs(parsed.query)
+        self.user.UserId = parsedQueries["userId"][
+        0
+        ]  # We don't call self.Settings.Save here, AuthenticateDevice will do that if it succeeds.
+        userKey = parsedQueries["userKey"][0]
         self.AuthenticateDevice(userKey)
