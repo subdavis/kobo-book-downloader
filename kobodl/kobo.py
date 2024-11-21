@@ -133,7 +133,7 @@ class Kobo:
 
         return {"response": ReauthenticationHook}
 
-    def __GetExtraLoginParameters(self) -> Tuple[str, str, str]:
+    def __GetExtraLoginParameters(self) -> Tuple[str, str, str, str]:
         signInUrl = self.InitializationSettings["sign_in_page"]
 
         params = {
@@ -528,11 +528,6 @@ class Kobo:
 
         cookie = SimpleCookie()
         cookie.load(authCookie)
-
-        def get_cookie_value(cookie_name):
-            if cookie_name in cookie:
-                return cookie[cookie_name].value
-            return None
 
         url = match.group(1)
         parsed = urllib.parse.urlparse(url)
