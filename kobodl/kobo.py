@@ -8,7 +8,6 @@ import time
 import gzip
 import urllib
 import json
-import io
 import copy
 import http.cookiejar
 from http.cookies import SimpleCookie
