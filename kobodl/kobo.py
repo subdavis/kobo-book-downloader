@@ -5,7 +5,6 @@ import os
 import re
 import sys
 import time
-import gzip
 import urllib
 import json
 import copy
@@ -207,8 +206,7 @@ class Kobo:
         request = Request(url=signInUrl, headers=headers)
         response = request.make_request()
 
-        decoded_response = gzip.decompress(response['content']).decode("utf-8")
-        htmlResponse = str(decoded_response)
+        htmlResponse = str(response['content'])
 
         authCookie = '; '.join([f'{cookie.name}={cookie.value}' for cookie in response['request'].cookie_jar])
 
@@ -560,8 +558,7 @@ class Kobo:
         request = Request(signInUrl, data=postData, headers=headers)
         response = request.make_request()
 
-        decoded_response = gzip.decompress(response['content']).decode('utf-8')
-        htmlResponse = decoded_response
+        htmlResponse = str(response['content'])
 
         match = re.search(r"'(kobo://UserAuthenticated\?[^']+)';", htmlResponse)
         if match is None:
