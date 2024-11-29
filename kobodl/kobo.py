@@ -581,14 +581,6 @@ class Kobo:
                     "Please be sure to remove any personally identifying information from the file."
                 )
 
-        url = match.group(1)
-        parsed = urllib.parse.urlparse(url)
-        parsedQueries = urllib.parse.parse_qs(parsed.query)
-        self.user.UserId = parsedQueries["userId"][
-            0
-        ]  # We don't call self.Settings.Save here, AuthenticateDevice will do that if it succeeds.
-        userKey = parsedQueries["userKey"][0]
-
         cookie = SimpleCookie()
         cookie.load(authCookie)
 
