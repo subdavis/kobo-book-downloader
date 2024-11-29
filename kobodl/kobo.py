@@ -357,10 +357,13 @@ class Kobo:
 
         for item in data['Spine']:
             fileNum = int(item['Id']) + 1
-            response = self.Session.get(item['Url'], stream=True)
             filePath = os.path.join(outputPath, str(fileNum) + '.' + item['FileExtension'])
+            request = Request(item['Url'], headers=self.Session.headers)
+            response = request.make_request()
+            byte_string = response['content']
             with open(filePath, "wb") as f:
-                for chunk in response.iter_content(chunk_size=1024 * 256):
+                for i in range(0, len(byte_string), 1024 * 256):
+                    chunk = byte_string[i:i + 1024 * 256]
                     f.write(chunk)
 
     # PUBLIC METHODS:
