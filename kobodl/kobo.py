@@ -111,8 +111,7 @@ class Kobo:
 
     def __init__(self, user: User):
         self.InitializationSettings = {}
-        self.Session = requests.session()
-        self.Session.headers.update({
+        self.headers = {
             "User-Agent": Kobo.UserAgent,
             "Accept": "*/*",
             "Connection": "keep-alive",
@@ -123,7 +122,7 @@ class Kobo:
             "TE": "trailers",
             "Pragma": "no-cache",
             "Cache-Control": "no-cache",
-        })
+        }
         self.user = user
 
     # PRIVATE METHODS
@@ -201,7 +200,7 @@ class Kobo:
             "pwsdid": self.user.DeviceId,
         }
 
-        headers = self.Session.headers
+        headers = self.headers
         query_string = urllib.parse.urlencode(params)
         signInUrl += "&" + query_string
 
@@ -338,7 +337,7 @@ class Kobo:
         raise KoboException(message)
 
     def __DownloadToFile(self, url, outputPath: str) -> None:
-        request = Request(url, headers=self.Session.headers)
+        request = Request(url, headers=self.headers)
         response = request.make_request()
         byte_string = response['content']
         with open(outputPath, "wb") as f:
@@ -347,17 +346,17 @@ class Kobo:
                 f.write(chunk)
 
     def __DownloadAudiobook(self, url, outputPath: str) -> None:
-        response = self.Session.get(url)
+        request = Request(url)
+        response = request.make_request()
 
-        response.raise_for_status()
         if not os.path.isdir(outputPath):
             os.mkdir(outputPath)
-        data = response.json()
+        data = response['content']
 
         for item in data['Spine']:
             fileNum = int(item['Id']) + 1
             filePath = os.path.join(outputPath, str(fileNum) + '.' + item['FileExtension'])
-            request = Request(item['Url'], headers=self.Session.headers)
+            request = Request(item['Url'], headers=self.headers)
             response = request.make_request()
             byte_string = response['content']
             with open(filePath, "wb") as f:
@@ -523,14 +522,13 @@ class Kobo:
         hooks = self.__GetReauthenticationHook()
         debug_data("LoadInitializationSettings")
 
-        session_headers = self.Session.headers
+        session_headers = self.headers
         session_headers['Authorization'] = headers['Authorization']
 
         try:
             request = Request(url="https://storeapi.kobo.com/v1/initialization", headers=session_headers, hooks=hooks)
             response = request.make_request()
-            decoded_response = gzip.decompress(response['content']).decode('utf-8')
-            jsonResponse = json.loads(decoded_response)
+            jsonResponse = json.loads(response['content'])
             self.InitializationSettings = jsonResponse["Resources"]
         except requests.HTTPError as err:
             print(response['reason'], response['content'])
@@ -556,7 +554,7 @@ class Kobo:
 
         postData = urllib.parse.urlencode(postData).encode()
 
-        headers = self.Session.headers
+        headers = self.headers
         headers['Cookie'] = authCookie
 
         request = Request(signInUrl, data=postData, headers=headers)
