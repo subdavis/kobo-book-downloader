@@ -4,7 +4,12 @@ import html
 import os
 import re
 import sys
+import time
+import gzip
 import urllib
+import json
+import io
+import copy
 import http.cookiejar
 from http.cookies import SimpleCookie
 import uuid
@@ -46,6 +51,57 @@ class NotAuthenticatedException(Exception):
 class KoboException(Exception):
     pass
 
+class Request:
+    def __init__(self, url, data=None, headers=None, hooks=None):
+        print(f"Making request to {url}")
+        self.retries = 0
+        self.max_retries = 10
+        self.cookie_jar = http.cookiejar.CookieJar()
+        self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.cookie_jar))
+        self.request = urllib.request.Request(url, data=data, headers=headers)
+        self.hooks = hooks
+        self.response = None
+        self._copy = None
+
+    def copy_http_response(self, original_response):
+        content = original_response.read()
+
+        new_content = content
+
+        new_response = {
+            'status': original_response.status,
+            'reason': original_response.reason,
+            'headers': copy.deepcopy(original_response.headers),
+            'version': original_response.version,
+            'msg': original_response.msg,
+            'content': new_content,
+            'request': original_response.request
+        }
+
+        return new_response
+
+    def make_request(self):
+        try:
+            self.response = self.opener.open(self.request)
+            self.response.request = self
+            # Call optional hooks
+            self._copy = self.copy_http_response(original_response=self.response)
+            if self.hooks:
+                self.hooks['response'](self._copy)
+            return self._copy
+        except urllib.error.HTTPError as err:
+            err.request = self
+            self._copy = self.copy_http_response(original_response=err)
+            if self.hooks:
+                self.hooks['response'](self._copy)
+            if err.status == 403:
+                print("403 Error")
+                self.retries += 1
+                if self.retries < self.max_retries:
+                    print(f"Retrying... (Attempt {self.retries})")
+                    time.sleep(5)
+                    self.make_request()
+        return self._copy
 
 class Kobo:
     Affiliate = "Kobo"
@@ -57,7 +113,18 @@ class Kobo:
     def __init__(self, user: User):
         self.InitializationSettings = {}
         self.Session = requests.session()
-        self.Session.headers.update({"User-Agent": Kobo.UserAgent})
+        self.Session.headers.update({
+            "User-Agent": Kobo.UserAgent,
+            "Accept": "*/*",
+            "Connection": "keep-alive",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "no-cors",
+            "Sec-Fetch-Site": "same-origin",
+            "Priority": "u=4",
+            "TE": "trailers",
+            "Pragma": "no-cache",
+            "Cache-Control": "no-cache",
+        })
         self.user = user
 
     # PRIVATE METHODS
@@ -67,6 +134,7 @@ class Kobo:
     def __GetHeaderWithAccessToken(self) -> dict:
         authorization = "Bearer " + self.user.AccessToken
         headers = {"Authorization": authorization}
+        headers['User-Agent'] = Kobo.UserAgent
         return headers
 
     def __RefreshAuthentication(self) -> None:
@@ -79,13 +147,12 @@ class Kobo:
             "RefreshToken": self.user.RefreshToken,
         }
 
+        postData = urllib.parse.urlencode(postData).encode()
+
         # The reauthentication hook is intentionally not set.
-        response = self.Session.post(
-            "https://storeapi.kobo.com/v1/auth/refresh", json=postData, headers=headers
-        )
-        debug_data("RefreshAuth", postData, response.text)
-        response.raise_for_status()
-        jsonResponse = response.json()
+        request = Request("https://storeapi.kobo.com/v1/auth/refresh", data=postData, headers=headers)
+        response = request.make_request()
+        jsonResponse = json.loads(response['content'])
 
         if jsonResponse["TokenType"] != "Bearer":
             raise KoboException(
@@ -105,30 +172,22 @@ class Kobo:
         # The hook's workflow is based on this:
         # https://github.com/requests/toolbelt/blob/master/requests_toolbelt/auth/http_proxy_digest.py
         def ReauthenticationHook(r, *args, **kwargs):
-            debug_data("Response", r.text)
-            if r.status_code != requests.codes.unauthorized:  # 401
+            debug_data("Response", r)
+            if r['status'] != requests.codes.unauthorized:  # 401
                 return
 
             print("Refreshing expired authentication token...", file=sys.stderr)
 
-            # Consume content and release the original connection to allow our new request to reuse the same one.
-            r.content
-            r.close()
-
-            prep = r.request.copy()
+            prep = r.copy()
 
             # Refresh the authentication token and use it.
             self.__RefreshAuthentication()
             headers = self.__GetHeaderWithAccessToken()
-            prep.headers["Authorization"] = headers["Authorization"]
-
-            # Don't retry to reauthenticate this request again.
-            prep.deregister_hook("response", ReauthenticationHook)
+            prep['headers']["Authorization"] = headers["Authorization"]
 
             # Resend the failed request.
-            _r = r.connection.send(prep, **kwargs)
-            _r.history.append(r)
-            _r.request = prep
+            prep['request'].hooks = None
+            _r = prep['request'].make_request(**kwargs)
             return _r
 
         return {"response": ReauthenticationHook}
@@ -142,26 +201,18 @@ class Kobo:
             "pwspid": Kobo.DefaultPlatformId,
             "pwsdid": self.user.DeviceId,
         }
-        headers = {
-            'User-Agent': Kobo.UserAgent,
-            'Accept': '*/*',
-            'Connection': 'keep-alive',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'no-cors',
-            'Sec-Fetch-Site': 'same-origin',
-            'Priority': 'u=4', 'TE': 'trailers',
-            'Pragma': 'no-cache', 'Cache-Control':
-            'no-cache'
-        }
+
+        headers = self.Session.headers
         query_string = urllib.parse.urlencode(params)
         signInUrl += "&" + query_string
-        cookie_jar = http.cookiejar.CookieJar()
-        opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cookie_jar))
-        request = urllib.request.Request(signInUrl, headers=headers)
-        response = opener.open(request)
-        htmlResponse = str(response.read())
 
-        authCookie = '; '.join([f'{cookie.name}={cookie.value}' for cookie in cookie_jar])
+        request = Request(url=signInUrl, headers=headers)
+        response = request.make_request()
+
+        decoded_response = gzip.decompress(response['content']).decode("utf-8")
+        htmlResponse = str(decoded_response)
+
+        authCookie = '; '.join([f'{cookie.name}={cookie.value}' for cookie in response['request'].cookie_jar])
 
         # The link can be found in the response ('<a class="kobo-link partner-option kobo"') but this will do for now.
         parsed = urllib.parse.urlparse(signInUrl)
@@ -193,15 +244,18 @@ class Kobo:
 
         if len(syncToken) > 0:
             headers["x-kobo-synctoken"] = syncToken
+
         debug_data("GetMyBookListPage")
-        response = self.Session.get(url, headers=headers, hooks=hooks)
-        response.raise_for_status()
-        bookList = response.json()
+
+        request = Request(url, headers=headers, hooks=hooks)
+        response = request.make_request()
+
+        bookList = json.loads(response['content'])
 
         syncToken = ""
-        syncResult = response.headers.get("x-kobo-sync")
+        syncResult = response['headers'].get("x-kobo-sync")
         if syncResult == "continue":
-            syncToken = response.headers.get("x-kobo-synctoken", "")
+            syncToken = response['headers'].get("x-kobo-synctoken", "")
 
         return bookList, syncToken
 
@@ -212,9 +266,13 @@ class Kobo:
         hooks = self.__GetReauthenticationHook()
 
         debug_data("GetContentAccessBook")
-        response = self.Session.get(url, params=params, headers=headers, hooks=hooks)
-        response.raise_for_status()
-        jsonResponse = response.json()
+
+        query_string = urllib.parse.urlencode(params)
+        url += "?" + query_string
+
+        request = Request(url, headers=headers, hooks=hooks)
+        response = request.make_request()
+        jsonResponse = json.loads(response['content'])
         return jsonResponse
 
     @staticmethod
@@ -281,10 +339,12 @@ class Kobo:
         raise KoboException(message)
 
     def __DownloadToFile(self, url, outputPath: str) -> None:
-        response = self.Session.get(url, stream=True)
-        response.raise_for_status()
+        request = Request(url, headers=self.Session.headers)
+        response = request.make_request()
+        byte_string = response['content']
         with open(outputPath, "wb") as f:
-            for chunk in response.iter_content(chunk_size=1024 * 256):
+            for i in range(0, len(byte_string), 1024 * 256):
+                chunk = byte_string[i:i + 1024 * 256]
                 f.write(chunk)
 
     def __DownloadAudiobook(self, url, outputPath: str) -> None:
@@ -329,10 +389,17 @@ class Kobo:
         if len(userKey) > 0:
             postData["UserKey"] = userKey
 
-        response = self.Session.post("https://storeapi.kobo.com/v1/auth/device", json=postData, headers=self.Session.headers)
-        debug_data("AuthenticateDevice", response.text)
-        response.raise_for_status()
-        jsonResponse = response.json()
+        postData = urllib.parse.urlencode(postData).encode()
+
+        headers = {
+            'User-Agent': Kobo.UserAgent
+        }
+
+        request = Request(url="https://storeapi.kobo.com/v1/auth/device", headers=headers, data=postData)
+        response = request.make_request()
+
+        debug_data("AuthenticateDevice", response['content'])
+        jsonResponse = json.loads(response['content'])
 
         if jsonResponse["TokenType"] != "Bearer":
             raise KoboException(
@@ -419,9 +486,9 @@ class Kobo:
             }
 
             debug_data("GetMyWishList")
-            response = self.Session.get(url, params=params, headers=headers, hooks=hooks)
-            response.raise_for_status()
-            wishList = response.json()
+            request = Request(url, headers=headers, hooks=hooks)
+            response = request.make_request()
+            wishList = json.loads(response['content'])
 
             items.extend(wishList["Items"])
 
@@ -438,12 +505,12 @@ class Kobo:
         hooks = self.__GetReauthenticationHook()
         debug_data("GetBookInfo")
         try:
-            response = self.Session.get(ebook_url, headers=headers, hooks=hooks)
-            response.raise_for_status()
+            request = Request(ebook_url, headers=headers, hooks=hooks)
+            response = request.make_request()
         except requests.HTTPError as err:
-            response = self.Session.get(audiobook_url, headers=headers, hooks=hooks)
-            response.raise_for_status()
-        jsonResponse = response.json()
+            request = Request(audiobook_url, headers=headers, hooks=hooks)
+            response = request.make_request()
+        jsonResponse = json.loads(response['content'])
         return jsonResponse
 
     def LoadInitializationSettings(self) -> None:
@@ -453,15 +520,18 @@ class Kobo:
         headers = self.__GetHeaderWithAccessToken()
         hooks = self.__GetReauthenticationHook()
         debug_data("LoadInitializationSettings")
-        response = self.Session.get(
-            "https://storeapi.kobo.com/v1/initialization", headers=headers, hooks=hooks
-        )
+
+        session_headers = self.Session.headers
+        session_headers['Authorization'] = headers['Authorization']
+
         try:
-            response.raise_for_status()
-            jsonResponse = response.json()
+            request = Request(url="https://storeapi.kobo.com/v1/initialization", headers=session_headers, hooks=hooks)
+            response = request.make_request()
+            decoded_response = gzip.decompress(response['content']).decode('utf-8')
+            jsonResponse = json.loads(decoded_response)
             self.InitializationSettings = jsonResponse["Resources"]
         except requests.HTTPError as err:
-            print(response.reason, response.text)
+            print(response['reason'], response['content'])
             raise err
 
     def Login(self, email: str, password: str, captcha: str) -> None:
@@ -482,23 +552,16 @@ class Kobo:
             "h-captcha-response": captcha,
         }
 
-        headers = {
-            'User-Agent': Kobo.UserAgent,
-            'Accept': '*/*',
-            'Connection': 'keep-alive',
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'no-cors',
-            'Sec-Fetch-Site': 'same-origin',
-            'Priority': 'u=4', 'TE': 'trailers',
-            'Pragma': 'no-cache', 'Cache-Control':
-            'no-cache',
-            'Cookie': authCookie
-        }
-
         postData = urllib.parse.urlencode(postData).encode()
-        request = urllib.request.Request(signInUrl, data=postData, headers=headers)
-        response = urllib.request.urlopen(request)
-        htmlResponse = str(response.read())
+
+        headers = self.Session.headers
+        headers['Cookie'] = authCookie
+
+        request = Request(signInUrl, data=postData, headers=headers)
+        response = request.make_request()
+
+        decoded_response = gzip.decompress(response['content']).decode('utf-8')
+        htmlResponse = decoded_response
 
         match = re.search(r"'(kobo://UserAuthenticated\?[^']+)';", htmlResponse)
         if match is None:
