@@ -50,7 +50,7 @@ class KoboException(Exception):
     pass
 
 class Request:
-    def __init__(self, url, data=None, headers=None, hooks=None):
+    def __init__(self, url, data=None, headers={}, hooks=None):
         print(f"Making request to {url}")
         self.retries = 0
         self.max_retries = 10
@@ -88,12 +88,12 @@ class Request:
                 self.hooks['response'](self._copy)
             return self._copy
         except urllib.error.HTTPError as err:
+            print(f"{err.status} Error")
             err.request = self
             self._copy = self.copy_http_response(original_response=err)
             if self.hooks:
                 self.hooks['response'](self._copy)
             if err.status == 403:
-                print("403 Error")
                 self.retries += 1
                 if self.retries < self.max_retries:
                     print(f"Retrying... (Attempt {self.retries})")
@@ -344,12 +344,12 @@ class Kobo:
                 f.write(chunk)
 
     def __DownloadAudiobook(self, url, outputPath: str) -> None:
-        request = Request(url)
+        request = Request(url, headers=self.headers)
         response = request.make_request()
 
         if not os.path.isdir(outputPath):
             os.mkdir(outputPath)
-        data = response['content']
+        data = json.loads(response['content'])
 
         for item in data['Spine']:
             fileNum = int(item['Id']) + 1
