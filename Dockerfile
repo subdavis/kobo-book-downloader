@@ -6,13 +6,12 @@ ENV VIRTUAL_ENV="/opt/kobodl/local/venv"
 
 RUN apk add --no-cache gcc libc-dev libffi-dev
 ADD https://install.python-poetry.org /install-poetry.py
-RUN POETRY_VERSION=1.1.7 POETRY_HOME=/opt/kobodl/local python /install-poetry.py
+RUN POETRY_VERSION=1.8.4 POETRY_HOME=/opt/kobodl/local python /install-poetry.py
 
 COPY . .
 
 RUN poetry env use system
 RUN poetry config virtualenvs.create false
-RUN poetry debug
 RUN poetry install --no-dev
 
 # Distributable Stage
