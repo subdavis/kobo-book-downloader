@@ -47,15 +47,28 @@ class KoboException(Exception):
 
 class Kobo:
     Affiliate = "Kobo"
-    ApplicationVersion = "8.11.24971"
+    ApplicationVersion = "10.1.2.39807"
+    CarrierName = "310270"
     DefaultPlatformId = "00000000-0000-0000-0000-000000004000"
+    DeviceModel = "Pixel"
+    DeviceOsVersion = "33"
     DisplayProfile = "Android"
-    UserAgent = "Mozilla/5.0 (Linux; Android 6.0; Google Nexus 7 2013 Build/MRA58K; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.186 Safari/537.36 KoboApp/8.40.2.29861 KoboPlatform Id/00000000-0000-0000-0000-000000004000 KoboAffiliate/Kobo KoboBuildFlavor/global"
+    UserAgent = "Mozilla/5.0 (Linux; Android 13; Pixel Build/TQ2B.230505.005.A1; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/101.0.4951.61 Safari/537.36 KoboApp/10.1.2.39807 KoboPlatform Id/00000000-0000-0000-0000-000000004000 KoboAffiliate/Kobo KoboBuildFlavor/global"
 
     def __init__(self, user: User):
         self.InitializationSettings = {}
         self.Session = requests.session()
-        self.Session.headers.update({"User-Agent": Kobo.UserAgent})
+        self.Session.headers.update({
+            "User-Agent": Kobo.UserAgent,
+            "X-Requested-With": "com.kobobooks.android",
+            "x-kobo-affiliatename": Kobo.Affiliate,
+            "x-kobo-appversion": Kobo.ApplicationVersion,
+            "x-kobo-carriername": Kobo.CarrierName,
+            "x-kobo-devicemodel": Kobo.DeviceModel,
+            "x-kobo-deviceos": Kobo.DisplayProfile,
+            "x-kobo-deviceosversion": Kobo.DeviceOsVersion,
+            "x-kobo-platformid": Kobo.DefaultPlatformId,
+        })
         self.user = user
 
     # PRIVATE METHODS
@@ -139,6 +152,12 @@ class Kobo:
             "pwsav": Kobo.ApplicationVersion,
             "pwspid": Kobo.DefaultPlatformId,
             "pwsdid": self.user.DeviceId,
+            "wscfv": "1.5",
+            "wscf": "kepub",
+            "wsmc": Kobo.CarrierName,
+            "pwspov": Kobo.DeviceOsVersion,
+            "pwspt": "Mobile",
+            "pwsdm": Kobo.DeviceModel,
         }
 
         response = self.Session.get(signInUrl, params=params)
