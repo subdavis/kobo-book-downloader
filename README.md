@@ -217,7 +217,7 @@ This happens from time to time, maybe once or twice a year.  Kobo changes their 
 
 > I can't log in, there's a problem with reading the captcha
 
-The clipboard interaction doesn't work for everyone.  Try supplying the captcha using `koobdl user add --captch "YOUR_CAPTCHA_CODE"`.
+The clipboard interaction doesn't work for everyone.  Try supplying the captcha using `kobodl user add --captcha "YOUR_CAPTCHA_CODE"`.
 
 > Some of my books are missing!
 
