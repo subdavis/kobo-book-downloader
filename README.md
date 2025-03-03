@@ -199,25 +199,11 @@ kobodl --version
 kobodl --debug [OPTIONS] COMMAND [ARGS]...
 ```
 
-## Getting a reCAPTCHA code
-
-Adding a user requires a bit of hackery to get a reCAPTCHA code from Kobo's website. This GIF helps to explain how to do that.
-
-![Gif explaining how to get reCAPTHCA](docs/captcha.gif)
-
 ## Troubleshooting
-
-> I can't log in.  My credentials are rejected.
-
-You must have a kobo email login for this tool to work (you can't use an external provider like Google or Facebook). However, you can create a NEW kobo account and link it with your existing account on the user profile page. Go to `My Account -> Account Settings` to link your new kobo login.
 
 > I can't log in.  I get a message saying "The page format might have changed"
 
 This happens from time to time, maybe once or twice a year.  Kobo changes their login page and makes it hard for the tool to parse out the necessary information.  Please open an issue.
-
-> I can't log in, there's a problem with reading the captcha
-
-The clipboard interaction doesn't work for everyone.  Try supplying the captcha using `koobdl user add --captch "YOUR_CAPTCHA_CODE"`.
 
 > Some of my books are missing!
 
@@ -256,7 +242,7 @@ poetry run tox -e type
 
 ## Notes
 
-kobo-book-downloader will prompt for your [Kobo](https://www.kobo.com/) e-mail address and password. Once it has successfully logged in, it won't ask for them again. Your password will not be stored on disk; Kobodl uses access tokens after the initial login.
+kobo-book-downloader uses the same web-based activation method to login as the Kobo e-readers. You will have to open an activation link—that uses the official [Kobo](https://www.kobo.com/) site—in your browser and enter the code. You might need to login if kobo.com asks you to. Once kobo-book-downloader has successfully logged in, it won't ask for the activation again. kobo-book-downloader doesn't store your Kobo password in any form; it works with access tokens.
 
 Credit recursively to [kobo-book-downloader](https://github.com/TnS-hun/kobo-book-downloader) and the projects that lead to it.
 

@@ -3,9 +3,11 @@ import dataclasses
 import html
 import os
 import re
+import secrets
+import string
 import sys
+import time
 import urllib
-import uuid
 from enum import Enum
 from shutil import copyfile
 from typing import Dict, Tuple
@@ -47,10 +49,14 @@ class KoboException(Exception):
 
 class Kobo:
     Affiliate = "Kobo"
-    ApplicationVersion = "8.11.24971"
-    DefaultPlatformId = "00000000-0000-0000-0000-000000004000"
+    ApplicationVersion = "4.38.23171"
+    DefaultPlatformId = "00000000-0000-0000-0000-000000000373"
     DisplayProfile = "Android"
-    UserAgent = "Mozilla/5.0 (Linux; Android 6.0; Google Nexus 7 2013 Build/MRA58K; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/74.0.3729.186 Safari/537.36 KoboApp/8.40.2.29861 KoboPlatform Id/00000000-0000-0000-0000-000000004000 KoboAffiliate/Kobo KoboBuildFlavor/global"
+    DeviceModel = "Kobo Aura ONE"
+    DeviceOs = "3.0.35+"
+    DeviceOsVersion = "NA"
+    # Use the user agent of the Kobo e-readers
+    UserAgent = "Mozilla/5.0 (Linux; U; Android 2.0; en-us;) AppleWebKit/538.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/538.1 (Kobo Touch 0373/4.38.23171)"
 
     def __init__(self, user: User):
         self.InitializationSettings = {}
@@ -66,6 +72,50 @@ class Kobo:
         authorization = "Bearer " + self.user.AccessToken
         headers = {"Authorization": authorization}
         return headers
+
+    def __WaitTillActivation(self, activationCheckUrl) -> Tuple[str, str]:
+        while True:
+            print("Waiting for you to finish the activation...")
+            time.sleep(5)
+
+            response = self.Session.get(activationCheckUrl)
+            response.raise_for_status()
+            jsonResponse = response.json()
+            if jsonResponse["Status"] == "Complete":
+                return jsonResponse["UserEmail"], jsonResponse["UserId"], jsonResponse["UserKey"]
+
+    def __ActivateOnWeb(self) -> Tuple[str, str]:
+        print( "Initiating web-based activation" )
+
+        params = {
+            "pwspid": Kobo.DefaultPlatformId,
+            "wsa": Kobo.Affiliate,
+            "pwsdid": self.user.DeviceId,
+            "pwsav": Kobo.ApplicationVersion,
+            "pwsdm": Kobo.DefaultPlatformId, # In the Android app this is the device model but Nickel sends the platform ID...
+            "pwspos": Kobo.DeviceOs,
+            "pwspov": Kobo.DeviceOsVersion,
+        }
+
+        response = self.Session.get("https://auth.kobobooks.com/ActivateOnWeb", params=params)
+        response.raise_for_status()
+        htmlResponse = response.text
+
+        match = re.search('data-poll-endpoint="([^"]+)"', htmlResponse)
+        if match is None:
+            raise KoboException(
+                "Can't find the activation poll endpoint in the response. The page format might have changed."
+            )
+        activationCheckUrl = "https://auth.kobobooks.com" + html.unescape(match.group(1))
+
+        match = re.search(r"""qrcodegenerator/generate.+?%26code%3D(\d+)'""", htmlResponse)
+        if match is None:
+            raise KoboException(
+                "Can't find the activation code in the response. The page format might have changed."
+            )
+        activationCode = match.group(1)
+
+        return activationCheckUrl, activationCode
 
     def __RefreshAuthentication(self) -> None:
         headers = self.__GetHeaderWithAccessToken()
@@ -130,43 +180,6 @@ class Kobo:
             return _r
 
         return {"response": ReauthenticationHook}
-
-    def __GetExtraLoginParameters(self) -> Tuple[str, str, str]:
-        signInUrl = self.InitializationSettings["sign_in_page"]
-
-        params = {
-            "wsa": Kobo.Affiliate,
-            "pwsav": Kobo.ApplicationVersion,
-            "pwspid": Kobo.DefaultPlatformId,
-            "pwsdid": self.user.DeviceId,
-        }
-
-        response = self.Session.get(signInUrl, params=params)
-        response.raise_for_status()
-        htmlResponse = response.text
-
-        # The link can be found in the response ('<a class="kobo-link partner-option kobo"') but this will do for now.
-        parsed = urllib.parse.urlparse(signInUrl)
-        koboSignInUrl = parsed._replace(query=None, path="/ww/en/signin/signin").geturl()
-
-        match = re.search(r"""\?workflowId=([^"]{36})""", htmlResponse)
-        if match is None:
-            raise KoboException(
-                "Can't find the workflow ID in the login form. The page format might have changed."
-            )
-        workflowId = html.unescape(match.group(1))
-
-        match = re.search(
-            r"""<input name="__RequestVerificationToken" type="hidden" value="([^"]+)" />""",
-            htmlResponse,
-        )
-        if match is None:
-            raise KoboException(
-                "Can't find the request verification token in the login form. The page format might have changed."
-            )
-        requestVerificationToken = html.unescape(match.group(1))
-
-        return koboSignInUrl, workflowId, requestVerificationToken
 
     def __GetMyBookListPage(self, syncToken: str) -> Tuple[list, str]:
         url = self.InitializationSettings["library_sync"]
@@ -286,6 +299,11 @@ class Kobo:
                 for chunk in response.iter_content(chunk_size=1024 * 256):
                     f.write(chunk)
 
+    @staticmethod
+    def __GenerateRandomHexDigitString( length: int ) -> str:
+        id = "".join( secrets.choice( string.hexdigits ) for _ in range( length ) )
+        return id.lower()
+
     # PUBLIC METHODS:
     @staticmethod
     def GetProductId(bookMetadata: dict) -> str:
@@ -297,7 +315,8 @@ class Kobo:
     # user key can't be used for anything.
     def AuthenticateDevice(self, userKey: str = "") -> None:
         if len(self.user.DeviceId) == 0:
-            self.user.DeviceId = str(uuid.uuid4())
+            self.user.DeviceId = Kobo.__GenerateRandomHexDigitString(64)
+            self.user.SerialNumber = Kobo.__GenerateRandomHexDigitString(32)
             self.user.AccessToken = ""
             self.user.RefreshToken = ""
 
@@ -307,6 +326,7 @@ class Kobo:
             "ClientKey": base64.b64encode(Kobo.DefaultPlatformId.encode()).decode(),
             "DeviceId": self.user.DeviceId,
             "PlatformId": Kobo.DefaultPlatformId,
+            "SerialNumber": self.user.SerialNumber,
         }
 
         if len(userKey) > 0:
@@ -447,53 +467,23 @@ class Kobo:
             print(response.reason, response.text)
             raise err
 
-    def Login(self, email: str, password: str, captcha: str) -> None:
-        (
-            signInUrl,
-            workflowId,
-            requestVerificationToken,
-        ) = self.__GetExtraLoginParameters()
+    def Login( self ) -> None:
+        activationCheckUrl, activationCode = self.__ActivateOnWeb()
 
-        postData = {
-            "LogInModel.WorkflowId": workflowId,
-            "LogInModel.Provider": Kobo.Affiliate,
-            "ReturnUrl": "",
-            "__RequestVerificationToken": requestVerificationToken,
-            "LogInModel.UserName": email,
-            "LogInModel.Password": password,
-            "g-recaptcha-response": captcha,
-            "h-captcha-response": captcha,
-        }
+        print("")
+        print("kobo-book-downloader uses the same web-based activation method to log in as the")
+        print("Kobo e-readers. You will have to open the link below in your browser and enter")
+        print("the code. You might need to login if kobo.com asks you to.")
+        print("")
+        print(f"Open https://www.kobo.com/activate and enter {activationCode}.")
+        print("")
+        print("kobo-book-downloader will wait now and periodically check for the activation to complete.")
+        print("")
 
-        response = self.Session.post(signInUrl, data=postData)
-        debug_data("Login", response.text)
-        response.raise_for_status()
-        htmlResponse = response.text
+        userEmail, userId, userKey = self.__WaitTillActivation( activationCheckUrl )
+        print("")
 
-        match = re.search(r"'(kobo://UserAuthenticated\?[^']+)';", htmlResponse)
-        if match is None:
-            soup = BeautifulSoup(htmlResponse, 'html.parser')
-            errors = soup.find(class_='validation-summary-errors') or soup.find(
-                class_='field-validation-error'
-            )
-            if errors:
-                raise KoboException('Login Failure! ' + errors.text)
-            else:
-                with open('loginpage_error.html', 'w') as loginpagefile:
-                    loginpagefile.write(htmlResponse)
-                raise KoboException(
-                    "Authenticated user URL can't be found. The page format might have changed!\n\n"
-                    "The bad page has been written to file 'loginpage_error.html'.  \n"
-                    "You should open an issue on GitHub and attach this file for help: https://github.com/subdavis/kobo-book-downloader/issues\n"
-                    "Please be sure to remove any personally identifying information from the file."
-                )
-
-        url = match.group(1)
-        parsed = urllib.parse.urlparse(url)
-        parsedQueries = urllib.parse.parse_qs(parsed.query)
-        self.user.UserId = parsedQueries["userId"][
-            0
-        ]  # We don't call self.Settings.Save here, AuthenticateDevice will do that if it succeeds.
-        userKey = parsedQueries["userKey"][0]
-
+        # We don't call Settings.Save here, AuthenticateDevice will do that if it succeeds.
+        self.user.Email = userEmail
+        self.user.UserId = userId
         self.AuthenticateDevice(userKey)
