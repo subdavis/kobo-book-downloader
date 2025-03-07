@@ -293,6 +293,10 @@ def GetBookOrBooks(
             click.echo('Skipping subscribtion entity')
             continue
 
+        # Save metadata to JSON file
+        with open(os.path.join(outputPath, f'{bookMetadata["Title"]}.json'), 'w') as f:
+            f.write(json.dumps(bookMetadata, indent=2))
+
         fileName = __MakeFileNameForBook(bookMetadata, formatStr)
         if book_type == BookType.EBOOK:
             # Audiobooks go in sub-directories

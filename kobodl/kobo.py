@@ -6,6 +6,7 @@ import re
 import sys
 import urllib
 import uuid
+import json
 from enum import Enum
 from shutil import copyfile
 from typing import Dict, Tuple, List
@@ -320,21 +321,30 @@ date={bookMetadata.get("PublicationDate")}
             os.mkdir(outputPath)
         data = response.json()
 
+        # Write response data to JSON file
+        with open(os.path.join(outputPath, "data.json"), "w") as f:
+            f.write(json.dumps(data, indent=4))
+
         metadataHandler = open(os.path.join(outputPath, "metadata.txt"), "a")
         filesHandler = open(os.path.join(outputPath, "files.txt"), "w")
 
         start = 0
+
         for idx, item in enumerate(data['Navigation']):
-            spine = data['Spine'][item['PartId'] - 1]
+            spine = data['Spine'][item['PartId']]
+            if data["Navigation"][0]["PartId"] != 0:
+                spine -= 1
+
             filename = f'{spine["Id"]:03}.{spine["FileExtension"]}'
             metadataHandler.write(
                 self.__createFFMpegChapter(start, spine['Duration'] * 1000, item["Title"]) + '\n\n'
             )
             start += spine['Duration'] * 1000
 
+            filesHandler.write(f"file '{filename}'\n")
+
             # Download chapter if missing
             if not os.path.isfile(os.path.join(outputPath, filename)):
-                filesHandler.write(f"file '{filename}'\n")
                 response = self.Session.get(spine['Url'], stream=True)
                 filePath = os.path.join(outputPath, filename)
                 with open(filePath, "wb") as f:
