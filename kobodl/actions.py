@@ -1,6 +1,7 @@
 import json
 import os
 import platform
+import subprocess
 from typing import List, TextIO, Tuple, Union
 
 import click
@@ -51,12 +52,16 @@ def __MakeFileNameForBook(bookMetadata: dict, formatStr: str) -> str:
     fileName = ''
     author = __SanitizeString(__GetBookAuthor(bookMetadata))
     title = __SanitizeString(bookMetadata['Title'])
+    bookSeries = __SanitizeString(bookMetadata.get('Series', {}).get('Name', ''))
+    bookSeriesNumber = __SanitizeString(bookMetadata.get('Series', {}).get('Number', ''))
 
     return formatStr.format_map(
         {
             **bookMetadata,
             'Author': author,
             'Title': title,
+            'Series': bookSeries,
+            'SeriesNumber': bookSeriesNumber,
             # Append a portion of revisionId to prevent name collisions.
             'ShortRevisionId': bookMetadata['RevisionId'][:8],
         }
@@ -144,6 +149,90 @@ def __GetBookList(kobo: Kobo, listAll: bool, exportFile: Union[TextIO, None]) ->
     return rows
 
 
+def __CreateM4BFile(outputPath: str, filename: str, bookMetadata: dict) -> None:
+    # Check if ffmpeg is installed
+    try:
+        subprocess.run(["ffmpeg", "-version"], check=True)
+    except subprocess.CalledProcessError:
+        click.echo("ffmpeg is not installed. Please install ffmpeg and try again.")
+        return
+
+    # Concatenate all mp3 files into one file
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-f",
+            "concat",
+            "-safe",
+            "0",
+            "-i",
+            "files.txt",
+            "-c",
+            "copy",
+            "-y",
+            "build_01_concat.mp3",
+        ],
+        check=True,
+        cwd=outputPath,
+    )
+
+    # Add cover
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-i",
+            "build_01_concat.mp3",
+            "-i",
+            "cover.jpg",
+            "-c",
+            "copy",
+            "-map",
+            "0",
+            "-map",
+            "1",
+            "-y",
+            "build_02_cover.mp3",
+        ],
+        check=True,
+        cwd=outputPath,
+    )
+
+    # Convert mp3 to m4a
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", "build_02_cover.mp3", "-c:v", "copy", "build_03_m4a.m4a"],
+        check=True,
+        cwd=outputPath,
+    )
+
+    # Add metadata to the m4a file and convert to m4b
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-i",
+            "build_03_m4a.m4a",
+            "-i",
+            "metadata.txt",
+            "-map",
+            "0",
+            "-map_metadata",
+            "1",
+            "-c",
+            "copy",
+            "-y",
+            f'{filename}.m4b',
+        ],
+        check=True,
+        cwd=outputPath,
+    )
+
+    # Remove all build_* files using python
+    for f in os.listdir(outputPath):
+        if f.startswith("build_"):
+            os.remove(os.path.join(outputPath, f))
+
+    return os.path.join(outputPath, f'{bookMetadata["Title"]}.m4b')
+
+
 def ListBooks(users: List[User], listAll: bool, exportFile: Union[TextIO, None]) -> List[Book]:
     '''list all books currently in the account'''
     for user in users:
@@ -174,6 +263,7 @@ def GetBookOrBooks(
     outputPath: str,
     formatStr: str = r'{Author} - {Title} {ShortRevisionId}',
     productId: str = '',
+    generateAudiobook: bool = False,
 ) -> Union[None, str]:
     """
     download 1 or all books to file
@@ -203,6 +293,10 @@ def GetBookOrBooks(
             click.echo('Skipping subscribtion entity')
             continue
 
+        # Save metadata to JSON file
+        with open(os.path.join(outputPath, f'{bookMetadata["Title"]}.json'), 'w') as f:
+            f.write(json.dumps(bookMetadata, indent=2))
+
         fileName = __MakeFileNameForBook(bookMetadata, formatStr)
         if book_type == BookType.EBOOK:
             # Audiobooks go in sub-directories
@@ -210,7 +304,15 @@ def GetBookOrBooks(
             fileName += '.epub'
         outputFilePath = os.path.join(outputPath, fileName)
 
-        if not productId and os.path.exists(outputFilePath):
+        if (
+            not productId
+            and os.path.exists(outputFilePath)
+            and (
+                generateAudiobook
+                and book_type == BookType.AUDIOBOOK
+                and os.path.exists(os.path.join(outputFilePath, f'{fileName}.m4b'))
+            )
+        ):
             # when downloading ALL books, skip books we've downloaded before
             click.echo(f'Skipping already downloaded book {outputFilePath}')
             continue
@@ -241,6 +343,13 @@ def GetBookOrBooks(
                     ),
                     err=True,
                 )
+
+        # Create final audiobook file
+        if book_type == BookType.AUDIOBOOK and generateAudiobook:
+            try:
+                __CreateM4BFile(outputFilePath, fileName, bookMetadata)
+            except Exception as e:
+                click.echo(f'Failed to create audiobook file: {str(e)}', err=True)
 
         if productId:
             # TODO: support audiobook downloads from web

@@ -6,9 +6,10 @@ import re
 import sys
 import urllib
 import uuid
+import json
 from enum import Enum
 from shutil import copyfile
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
 import requests
 from bs4 import BeautifulSoup
@@ -270,6 +271,48 @@ class Kobo:
             for chunk in response.iter_content(chunk_size=1024 * 256):
                 f.write(chunk)
 
+    def __prepareAudiobookMetadata(self, bookMetadata: dict, outputPath: str) -> None:
+        os.makedirs(outputPath, exist_ok=True)
+
+        # Download cover image as cover.jpg
+        coverImageId = bookMetadata.get("CoverImageId")
+        if coverImageId:
+            coverImageUrl = f'https://cdn.kobo.com/book-images/{coverImageId}/353/569/90/False/.jpg'
+            response = self.Session.get(coverImageUrl)
+            response.raise_for_status()
+            with open(os.path.join(outputPath, "cover.jpg"), "wb") as f:
+                f.write(response.content)
+
+        # Write metadata to metadata.txt before processing the chapters download
+        with open(os.path.join(outputPath, "metadata.txt"), "w") as chaptersFile:
+            chaptersFile.write(self.__buildFFMpegChapterHeader(bookMetadata))
+
+    def __createFFMpegChapter(self, start: int, duration: int, title: str) -> str:
+        return f'''[CHAPTER]
+TIMEBASE=1/1000
+START={start}
+END={start + duration}
+title={title}'''
+
+    def __buildFFMpegChapterHeader(self, bookMetadata: dict) -> None:
+        authors: List[str] = []
+        composers: List[str] = []
+
+        for creator in bookMetadata.get("ContributorRoles"):
+            if creator.get("Role") == "Author":
+                authors.append(creator["Name"])
+            if creator.get("Role") == "Narrator":
+                composers.append(creator["Name"])
+
+        return f''';FFMETADATA1
+title={bookMetadata.get("Title")}
+artist={", ".join(authors)}
+composer={", ".join(composers)}
+publisher={bookMetadata.get("Publisher").get("Name")}
+date={bookMetadata.get("PublicationDate")}
+
+'''
+
     def __DownloadAudiobook(self, url, outputPath: str) -> None:
         response = self.Session.get(url)
 
@@ -278,13 +321,38 @@ class Kobo:
             os.mkdir(outputPath)
         data = response.json()
 
-        for item in data['Spine']:
-            fileNum = int(item['Id']) + 1
-            response = self.Session.get(item['Url'], stream=True)
-            filePath = os.path.join(outputPath, str(fileNum) + '.' + item['FileExtension'])
-            with open(filePath, "wb") as f:
-                for chunk in response.iter_content(chunk_size=1024 * 256):
-                    f.write(chunk)
+        # Write response data to JSON file
+        with open(os.path.join(outputPath, "data.json"), "w") as f:
+            f.write(json.dumps(data, indent=4))
+
+        metadataHandler = open(os.path.join(outputPath, "metadata.txt"), "a")
+        filesHandler = open(os.path.join(outputPath, "files.txt"), "w")
+
+        start = 0
+
+        for idx, item in enumerate(data['Navigation']):
+            spine = data['Spine'][item['PartId']]
+            if data["Navigation"][0]["PartId"] != 0:
+                spine -= 1
+
+            filename = f'{spine["Id"]:03}.{spine["FileExtension"]}'
+            metadataHandler.write(
+                self.__createFFMpegChapter(start, spine['Duration'] * 1000, item["Title"]) + '\n\n'
+            )
+            start += spine['Duration'] * 1000
+
+            filesHandler.write(f"file '{filename}'\n")
+
+            # Download chapter if missing
+            if not os.path.isfile(os.path.join(outputPath, filename)):
+                response = self.Session.get(spine['Url'], stream=True)
+                filePath = os.path.join(outputPath, filename)
+                with open(filePath, "wb") as f:
+                    for chunk in response.iter_content(chunk_size=1024 * 256):
+                        f.write(chunk)
+
+        metadataHandler.close()
+        filesHandler.close()
 
     # PUBLIC METHODS:
     @staticmethod
@@ -342,6 +410,7 @@ class Kobo:
 
         try:
             if isAudiobook:
+                self.__prepareAudiobookMetadata(bookMetadata, outputPath)
                 self.__DownloadAudiobook(downloadUrl, outputPath)
             else:
                 self.__DownloadToFile(downloadUrl, temporaryOutputPath)

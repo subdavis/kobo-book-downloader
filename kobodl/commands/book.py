@@ -45,9 +45,18 @@ def book():
     default=r'{Author} - {Title} {ShortRevisionId}',
     help=r"default: '{Author} - {Title} {ShortRevisionId}'",
 )
+@click.option('--generate-audiobook', is_flag=True, help='generate m4b audiobook bundle file')
 @click.argument('product-id', nargs=-1, type=click.STRING)
 @click.pass_obj
-def get(ctx, user, output_dir: Path, get_all: bool, format_str: str, product_id: List[str]):
+def get(
+    ctx,
+    user,
+    output_dir: Path,
+    get_all: bool,
+    format_str: str,
+    generate_audiobook: bool,
+    product_id: List[str],
+):
     if len(Globals.Settings.UserList.users) == 0:
         click.echo('error: no users found.  Did you `kobodl user add`?', err=True)
         exit(1)
@@ -77,10 +86,18 @@ def get(ctx, user, output_dir: Path, get_all: bool, format_str: str, product_id:
 
     os.makedirs(output_dir, exist_ok=True)
     if get_all:
-        actions.GetBookOrBooks(usercls, output_dir, formatStr=format_str)
+        actions.GetBookOrBooks(
+            usercls, output_dir, formatStr=format_str, generateAudiobook=generate_audiobook
+        )
     else:
         for pid in product_id:
-            actions.GetBookOrBooks(usercls, output_dir, formatStr=format_str, productId=pid)
+            actions.GetBookOrBooks(
+                usercls,
+                output_dir,
+                formatStr=format_str,
+                productId=pid,
+                generateAudiobook=generate_audiobook,
+            )
 
 
 @book.command(name='list', help='list books')
