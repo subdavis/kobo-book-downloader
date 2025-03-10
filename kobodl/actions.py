@@ -161,12 +161,12 @@ def ListBooks(users: List[User], listAll: bool, exportFile: Union[TextIO, None])
             )
 
 
-def Login(user: User, password: str, captcha: str) -> None:
+def Login(user: User) -> None:
     '''perform device initialization and get token'''
     kobo = Kobo(user)
     kobo.AuthenticateDevice()
     kobo.LoadInitializationSettings()
-    kobo.Login(user.Email, password, captcha)
+    kobo.Login()
 
 
 def GetBookOrBooks(

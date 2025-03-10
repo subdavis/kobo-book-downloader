@@ -44,40 +44,10 @@ def list(ctx, identifier):
 
 
 @user.command(name='add', help='add new user')
-@click.option('--email', prompt=True, hide_input=False, type=click.STRING, help="kobo.com email.")
-@click.option('--captcha', type=click.STRING, help="kobo.com captcha.")
-@click.password_option(help="kobo.com password (not stored)")
 @click.pass_obj
-def add(ctx, email, captcha, password):
-    user = User(Email=email)
-    click.echo(
-        """
-    1. Open https://authorize.kobo.com/signin in a private/incognito window in your browser.
-    2. wait till the page loads (do not login!)
-    3. open the developer tools (use F12 in Firefox/Chrome, or right-click and choose "inspect")
-    4. select the console tab,
-    5. copy-paste the following code to the console there and then press Enter.
-
-    var newCaptchaDiv = document.createElement("div");
-    newCaptchaDiv.id = "new-hcaptcha-container";
-    var siteKey = document.getElementById('hcaptcha-container').getAttribute('data-sitekey');
-    document.body.replaceChildren(newCaptchaDiv);
-    grecaptcha.render(newCaptchaDiv.id, {
-        sitekey: siteKey,
-        callback: function(r) {console.log("Captcha response:");console.log(r);}
-    });
-    console.log('Click the checkbox to get the code');
-
-    A captcha should show up below the Sign-in form. Once you solve the captcha its response will be written
-    below the pasted code in the browser's console. Copy the response (the line below "Captcha response:")
-    and paste it here.  It will be very long!
-    """
-    )
-    if not captcha:
-        input('Press enter after copying the captcha code...')
-        captcha = pyperclip.paste().strip()
-        click.echo(f'Read captcha code from clipboard: {captcha}')
-    actions.Login(user, password, captcha)
+def add(ctx):
+    user = User()
+    actions.Login(user)
     Globals.Settings.UserList.users.append(user)
     Globals.Settings.Save()
     click.echo('Login Success. Try to list your books with `kobodl book list`')

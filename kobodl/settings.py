@@ -8,8 +8,9 @@ from dataclasses_json import dataclass_json
 @dataclass_json
 @dataclasses.dataclass
 class User:
-    Email: str
+    Email: str = ""
     DeviceId: str = ""
+    SerialNumber: str = ""
     AccessToken: str = ""
     RefreshToken: str = ""
     UserId: str = ""
