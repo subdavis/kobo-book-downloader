@@ -85,14 +85,14 @@ class Kobo:
                 return jsonResponse["UserEmail"], jsonResponse["UserId"], jsonResponse["UserKey"]
 
     def __ActivateOnWeb(self) -> Tuple[str, str]:
-        print( "Initiating web-based activation" )
+        print("Initiating web-based activation")
 
         params = {
             "pwspid": Kobo.DefaultPlatformId,
             "wsa": Kobo.Affiliate,
             "pwsdid": self.user.DeviceId,
             "pwsav": Kobo.ApplicationVersion,
-            "pwsdm": Kobo.DefaultPlatformId, # In the Android app this is the device model but Nickel sends the platform ID...
+            "pwsdm": Kobo.DefaultPlatformId,  # In the Android app this is the device model but Nickel sends the platform ID...
             "pwspos": Kobo.DeviceOs,
             "pwspov": Kobo.DeviceOsVersion,
         }
@@ -300,8 +300,8 @@ class Kobo:
                     f.write(chunk)
 
     @staticmethod
-    def __GenerateRandomHexDigitString( length: int ) -> str:
-        id = "".join( secrets.choice( string.hexdigits ) for _ in range( length ) )
+    def __GenerateRandomHexDigitString(length: int) -> str:
+        id = "".join(secrets.choice(string.hexdigits) for _ in range(length))
         return id.lower()
 
     # PUBLIC METHODS:
@@ -467,7 +467,7 @@ class Kobo:
             print(response.reason, response.text)
             raise err
 
-    def Login( self ) -> None:
+    def Login(self) -> None:
         activationCheckUrl, activationCode = self.__ActivateOnWeb()
 
         print("")
@@ -477,10 +477,12 @@ class Kobo:
         print("")
         print(f"Open https://www.kobo.com/activate and enter {activationCode}.")
         print("")
-        print("kobo-book-downloader will wait now and periodically check for the activation to complete.")
+        print(
+            "kobo-book-downloader will wait now and periodically check for the activation to complete."
+        )
         print("")
 
-        userEmail, userId, userKey = self.__WaitTillActivation( activationCheckUrl )
+        userEmail, userId, userKey = self.__WaitTillActivation(activationCheckUrl)
         print("")
 
         # We don't call Settings.Save here, AuthenticateDevice will do that if it succeeds.
