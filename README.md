@@ -201,10 +201,6 @@ kobodl --debug [OPTIONS] COMMAND [ARGS]...
 
 ## Troubleshooting
 
-> I can't log in.  I get a message saying "The page format might have changed"
-
-This happens from time to time, maybe once or twice a year.  Kobo changes their login page and makes it hard for the tool to parse out the necessary information.  Please open an issue.
-
 > Some of my books are missing!
 
 Try `kobodl book list --read` to show all "finished" and "archived" books.  You can manage your book status on [the library page](https://kobo.com/library).  Try changing the status using the "..." button.
