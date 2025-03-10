@@ -12,8 +12,8 @@ COPY . .
 
 RUN poetry env use system
 RUN poetry config virtualenvs.create false
-RUN poetry debug
-RUN poetry install --no-dev
+RUN poetry debug info
+RUN poetry install --without dev
 
 # Distributable Stage
 FROM python:3.9-alpine
