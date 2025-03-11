@@ -1,7 +1,7 @@
 import json.decoder
 import os
 
-from flask import Flask, abort, redirect, render_template, request, send_from_directory
+from flask import Flask, abort, jsonify, redirect, render_template, request, send_from_directory
 from requests import Request, Session
 from requests.auth import HTTPBasicAuth
 from requests.exceptions import HTTPError
@@ -22,23 +22,43 @@ def index():
 def users():
     error = None
     if request.method == 'POST':
-        print(request.form)
         email = request.form.get('email')
-        password = request.form.get('password')
-        captcha = request.form.get('captcha')
-        print(email, password, captcha)
-        if email and password and captcha:
+        if email:
             user = User(Email=email)
             try:
-                actions.Login(user, password, captcha)
-                Globals.Settings.UserList.users.append(user)
-                Globals.Settings.Save()
+                activation_url, activation_code = actions.InitiateLogin(user)
+                return jsonify({
+                    'activation_url': 'https://www.kobo.com/activate',
+                    'activation_code': activation_code,
+                    'check_url': activation_url,
+                    'email': email
+                })
             except Exception as err:
                 error = str(err)
         else:
-            error = 'email, password, or captcha missing'
+            error = 'email is required'
     users = Globals.Settings.UserList.users
     return render_template('users.j2', users=users, error=error)
+
+
+@app.route('/user/check-activation', methods=['POST'])
+def check_activation():
+    data = request.get_json()
+    check_url = data.get('check_url')
+    email = data.get('email')
+    
+    if not check_url or not email:
+        return jsonify({'error': 'Missing required parameters'}), 400
+
+    user = User(Email=email)
+    try:
+        if actions.CheckActivation(user, check_url):
+            Globals.Settings.UserList.users.append(user)
+            Globals.Settings.Save()
+            return jsonify({'success': True})
+        return jsonify({'success': False})
+    except Exception as err:
+        return jsonify({'error': str(err)}), 400
 
 
 @app.route('/user/<userid>/remove', methods=['POST'])

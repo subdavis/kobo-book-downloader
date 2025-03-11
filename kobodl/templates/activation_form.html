@@ -1,0 +1,104 @@
+<div class="max-w-md">
+
+  <!-- Initial Email Form -->
+  <form id="emailForm" class="mb-8">
+    <input
+      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+      type="email"
+      name="email"
+      id="email"
+      placeholder="Your Kobo Account Email"
+      required
+    >
+    <button
+      class="mt-4 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+      type="submit"
+    >
+      Start Activation
+    </button>
+  </form>
+
+  <!-- Activation Instructions (Hidden initially) -->
+  <div id="activationInstructions" class="hidden">
+    <div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-4" role="alert">
+      <h3 class="font-bold">Follow these steps:</h3>
+      <ol class="list-decimal ml-4 mt-2">
+        <li class="mb-2">Open <a href="" id="activationLink" target="_blank" class="text-blue-600 hover:underline">the Kobo activation page</a></li>
+        <li class="mb-2">Enter this code: <span id="activationCode" class="font-mono bg-gray-200 px-2 py-1 rounded"></span></li>
+        <li>Sign in to your Kobo account if prompted</li>
+      </ol>
+    </div>
+    <div class="text-center">
+      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <p class="mt-2">Waiting for activation...</p>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('emailForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('email').value;
+  
+  try {
+    const response = await fetch('/user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        email: email
+      })
+    });
+    
+    const data = await response.json();
+    
+    // Show activation instructions
+    document.getElementById('emailForm').classList.add('hidden');
+    document.getElementById('activationInstructions').classList.remove('hidden');
+    
+    // Update activation details
+    document.getElementById('activationLink').href = data.activation_url;
+    document.getElementById('activationCode').textContent = data.activation_code;
+    
+    // Start polling for activation
+    pollActivation(data.check_url, data.email);
+    
+  } catch (error) {
+    console.error('Error:', error);
+    alert('An error occurred. Please try again.');
+  }
+});
+
+async function pollActivation(checkUrl, email) {
+  while (true) {
+    try {
+      const response = await fetch('/user/check-activation', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          check_url: checkUrl,
+          email: email
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        window.location.reload();
+        return;
+      }
+      
+      // Wait 5 seconds before next poll
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+    } catch (error) {
+      console.error('Error checking activation:', error);
+      alert('Error checking activation status. Please try again.');
+      return;
+    }
+  }
+}
+</script>

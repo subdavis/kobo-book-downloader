@@ -6,8 +6,8 @@
   <thead>
     <tr class="text-left">
       <th class="p-2 pl-4"> Email </th>
-      <th class="p-2 pl-4""> DeviceId </th>
-      <th class="p-2 pl-4""> Books </th>
+      <th class="p-2 pl-4"> DeviceId </th>
+      <th class="p-2 pl-4"> Books </th>
     </tr>
   </thead>
   <tbody>
@@ -30,40 +30,7 @@
 {% endif %}
 
 <h1 class="text-2xl mt-6">Add User</h1>
-<form style="max-width: 500px;" action="/user" method="post">
-  {% include "error.j2" %}
-  <input
-    class="my-2 shadow appearance-none border
-      rounded w-full py-2 px-3 text-gray-700
-      leading-tight focus:outline-none focus:shadow-outline"
-    type="text"
-    name="email"
-    placeholder="Kobo Account Email"
-  >
-  <input
-    class="my-2 shadow appearance-none border
-      rounded w-full py-2 px-3 text-gray-700 mb-3
-      leading-tight focus:outline-none focus:shadow-outline"
-    name="password"
-    type="password"
-    placeholder="password"
-  >
-  <input
-    class="my-2 shadow appearance-none border
-      rounded w-full py-2 px-3 text-gray-700 mb-3
-      leading-tight focus:outline-none focus:shadow-outline"
-    name="captcha"
-    type="text"
-    placeholder="captcha code (see instructions)"
-  >
-  <button
-    class="my-2 bg-blue-500 hover:bg-blue-700 text-white font-bold
-      py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-    type="submit"
-  >
-    Add user
-  </button>
-</form>
+{% include "error.j2" %}
+{% include "activation_form.html" %}
 
-{% include "instructions.html" %}
 {% include "footer.html" %}

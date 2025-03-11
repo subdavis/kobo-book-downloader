@@ -160,13 +160,32 @@ def ListBooks(users: List[User], listAll: bool, exportFile: Union[TextIO, None])
                 Owner=user,
             )
 
-
 def Login(user: User) -> None:
     '''perform device initialization and get token'''
     kobo = Kobo(user)
     kobo.AuthenticateDevice()
     kobo.LoadInitializationSettings()
     kobo.Login()
+
+
+def InitiateLogin(user: User) -> Tuple[str, str]:
+    """Start the login process and return activation details"""
+    kobo = Kobo(user)
+    return kobo._Kobo__ActivateOnWeb()
+
+
+def CheckActivation(user: User, check_url: str) -> bool:
+    """Check if activation is complete and setup user if so"""
+    kobo = Kobo(user)
+    try:
+        email, user_id, user_key = kobo._Kobo__CheckActivation(check_url)
+        user.Email = email
+        user.UserId = user_id
+        kobo.AuthenticateDevice(user_key)
+        kobo.LoadInitializationSettings()
+        return True
+    except Exception:
+        return False
 
 
 def GetBookOrBooks(
