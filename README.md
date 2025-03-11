@@ -125,7 +125,6 @@ General usage documentation.
 
 ``` bash
 # Get started by adding one or more users
-# See `Getting a reCAPTCHA code` below for more help
 kobodl user add
 
 # List users
