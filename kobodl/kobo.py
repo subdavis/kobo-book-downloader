@@ -73,16 +73,21 @@ class Kobo:
         headers = {"Authorization": authorization}
         return headers
 
+    def __CheckActivation(self, activationCheckUrl) -> Tuple[str, str, str] | None:
+        response = self.Session.get(activationCheckUrl)
+        response.raise_for_status()
+        jsonResponse = response.json()
+        if jsonResponse["Status"] == "Complete":
+            return (jsonResponse["UserEmail"], jsonResponse["UserId"], jsonResponse["UserKey"])
+        return None
+
     def __WaitTillActivation(self, activationCheckUrl) -> Tuple[str, str]:
         while True:
             print("Waiting for you to finish the activation...")
             time.sleep(5)
-
-            response = self.Session.get(activationCheckUrl)
-            response.raise_for_status()
-            jsonResponse = response.json()
-            if jsonResponse["Status"] == "Complete":
-                return jsonResponse["UserEmail"], jsonResponse["UserId"], jsonResponse["UserKey"]
+            response = self.__CheckActivation(activationCheckUrl)
+            if response:
+                return response
 
     def __ActivateOnWeb(self) -> Tuple[str, str]:
         print("Initiating web-based activation")
