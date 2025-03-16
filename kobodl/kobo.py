@@ -273,6 +273,10 @@ class Kobo:
             for key in download_keys:
                 download_url = jsonContentUrl.get(key, None)
                 if download_url:
+                    parsed = urllib.parse.urlparse( download_url )
+                    parsedQueries = urllib.parse.parse_qs( parsed.query )
+                    parsedQueries.pop( "b", None ) # https://github.com/TnS-hun/kobo-book-downloader/commit/54a7f464c7fdf552e62c209fb9c3e7e106dabd85
+                    download_url = parsed._replace( query = urllib.parse.urlencode( parsedQueries, doseq = True ) ).geturl()
                     return download_url, hasDrm
 
         message = f"Download URL for supported formats can't be found for product '{productId}'.\n"
