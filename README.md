@@ -214,10 +214,14 @@ Try enabling debugging.  Run `kobodl --debug book get` (for example), which will
 
 ## Development
 
-This project uses [Python Poetry](https://python-poetry.org/).
+This project uses [Python Poetry](https://python-poetry.org/). I also personally like `pyenv` and the pyenv-virtualenv addon. I install these with homebrew (MacOS).
 
 ```bash
-pip install poetry
+# Optional if you use pyenv
+pyenv install 3.11
+pyenv virtualenv 3.11 kobo-book-downloader
+echo "kobo-book-downloader" >> .python-version
+
 git clone https://github.com/subdavis/kobo-book-downloader
 cd kobo-book-downloader
 poetry install

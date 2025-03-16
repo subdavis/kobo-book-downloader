@@ -10,7 +10,7 @@ import time
 import urllib
 from enum import Enum
 from shutil import copyfile
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Union
 
 import requests
 from bs4 import BeautifulSoup
@@ -73,7 +73,7 @@ class Kobo:
         headers = {"Authorization": authorization}
         return headers
 
-    def __CheckActivation(self, activationCheckUrl) -> Tuple[str, str, str] | None:
+    def __CheckActivation(self, activationCheckUrl) -> Union[Tuple[str, str, str], None]:
         response = self.Session.get(activationCheckUrl)
         response.raise_for_status()
         jsonResponse = response.json()

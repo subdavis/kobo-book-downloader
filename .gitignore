@@ -3,6 +3,7 @@
 *.egg-info/
 .eggs/
 .vscode/
+.python-version
 loginpage_error.html
 venv/
 kobo_downloads/
