@@ -30,6 +30,7 @@ kobodl = "kobodl:cli"
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
 beautifulsoup4 = "<5.0.0"
+click = "<9"
 dataclasses = "<1.0.0"
 dataclasses-json = "<0.6.0"
 flask = "3.1.0"
