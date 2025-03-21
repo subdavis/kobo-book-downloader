@@ -1,5 +1,4 @@
 import click
-import pyperclip
 from tabulate import tabulate
 
 from kobodl import actions, cli
