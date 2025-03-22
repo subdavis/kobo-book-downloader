@@ -160,6 +160,7 @@ def ListBooks(users: List[User], listAll: bool, exportFile: Union[TextIO, None])
                 Owner=user,
             )
 
+
 def Login(user: User) -> None:
     '''perform device initialization and get token'''
     kobo = Kobo(user)

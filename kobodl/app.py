@@ -23,12 +23,14 @@ def users():
             user = User(Email=email)
             try:
                 activation_url, activation_code = actions.InitiateLogin(user)
-                return jsonify({
-                    'activation_url': 'https://www.kobo.com/activate',
-                    'activation_code': activation_code,
-                    'check_url': activation_url,
-                    'email': email
-                })
+                return jsonify(
+                    {
+                        'activation_url': 'https://www.kobo.com/activate',
+                        'activation_code': activation_code,
+                        'check_url': activation_url,
+                        'email': email,
+                    }
+                )
             except Exception as err:
                 error = str(err)
         else:
@@ -42,7 +44,7 @@ def check_activation():
     data = request.get_json()
     check_url = data.get('check_url')
     email = data.get('email')
-    
+
     if not check_url or not email:
         return jsonify({'error': 'Missing required parameters'}), 400
 
