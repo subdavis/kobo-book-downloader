@@ -1,10 +1,6 @@
-import json.decoder
 import os
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, send_from_directory
-from requests import Request, Session
-from requests.auth import HTTPBasicAuth
-from requests.exceptions import HTTPError
 
 from kobodl import actions
 from kobodl.globals import Globals
@@ -97,7 +93,7 @@ def downloadBook(userid, productid):
     absOutputDir, tail = os.path.split(outputFileName)
     # send_from_directory must be given an absolute path to avoid confusion
     # (relative paths are relative to root_path, not working dir)
-    return send_from_directory(absOutputDir, tail, as_attachment=True, attachment_filename=tail)
+    return send_from_directory(absOutputDir, tail, as_attachment=True, download_name=tail)
 
 
 @app.route('/book', methods=['GET'])
