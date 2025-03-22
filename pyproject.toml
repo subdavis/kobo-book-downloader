@@ -12,7 +12,7 @@ multi_line_output = 3
 
 [tool.poetry]
 name = "kobodl"
-version = "0.10.4"
+version = "0.11.0"
 description = "Kobo Book Downloader"
 authors = ["Brandon Davis <kobodl@subdavis.com>"]
 license = "Unlicense"
