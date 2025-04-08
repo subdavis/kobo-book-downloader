@@ -331,11 +331,18 @@ date={bookMetadata.get("PublicationDate")}
         start = 0
 
         for idx, item in enumerate(data['Navigation']):
-            spine = data['Spine'][item['PartId']]
-            if data["Navigation"][0]["PartId"] != 0:
-                spine -= 1
+            # Add bounds check to prevent IndexError
+            part_id = item.get('PartId', 0)
+            if part_id >= len(data['Spine']):
+                print(f"Warning: PartId {part_id} is out of range for Spine list. Skipping this item.")
+                continue
 
-            filename = f'{spine["Id"]:03}.{spine["FileExtension"]}'
+            spine = data['Spine'][part_id]
+            spine_id = spine["Id"]
+            if data["Navigation"][0]["PartId"] != 0:
+                spine_id = spine_id - 1
+
+            filename = f'{spine_id:03}.{spine["FileExtension"]}'
             metadataHandler.write(
                 self.__createFFMpegChapter(start, spine['Duration'] * 1000, item["Title"]) + '\n\n'
             )
