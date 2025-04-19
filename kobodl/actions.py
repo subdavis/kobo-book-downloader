@@ -1,7 +1,7 @@
 import json
 import os
 import platform
-from typing import List, TextIO, Tuple, Union
+from typing import List, TextIO, Tuple, Union, Generator
 
 import click
 
@@ -158,6 +158,24 @@ def ListBooks(users: List[User], listAll: bool, exportFile: Union[TextIO, None])
                 Archived=columns[3],
                 Audiobook=columns[4],
                 Owner=user,
+            )
+
+# Wishlist item response example
+# {'DateAdded': '2020-05-12T00:51:32.8860172Z', 'CrossRevisionId': '4dc63ad1-0b4d-3e52-a8bb-704e632963e8', 'IsPurchaseable': True, 'IsSupportedOnCurrentPlatform': True, 'ProductMetadata': {'Book': {'Contributors': 'Mohsin Hamid', 'WorkId': '75952d21-3893-40a6-a6a2-088ae9337c8a', 'Subtitle': 'A Novel', 'IsFree': False, 'ISBN': '9780735212183', 'PublicationDate': '2017-03-07T00:00:00.0000000Z', 'ExternalIds': ['od_2814358'], 'ContributorRoles': [{'Name': 'Mohsin Hamid', 'Role': 'Author'}], 'IsInternetArchive': False, 'IsRecommendation': False, 'CrossRevisionId': '4dc63ad1-0b4d-3e52-a8bb-704e632963e8', 'Title': 'Exit West', 'Description': '<p>**One of <em>The New York Times</em>’s 100 Best Books of the 21st Century</p><p>FINALIST FOR THE BOOKER PRIZE & WINNER OF THE <em>L.A. TIMES</em> BOOK PRIZE FOR FICTION and THE ASPEN WORDS LITERARY PRIZE**</p><p><strong>“It was as if Hamid knew what was going to happen to America and the world, and gave us a road map to our future… At once terrifying and … oddly hopeful.” —Ayelet Waldman, <em>The New York Times Book Review</em></strong></p><p><strong>“Moving, audacious, and indelibly hu...', 'Language': 'en', 'Locale': {'LanguageCode': 'eng', 'ScriptCode': '', 'CountryCode': ''}, 'ImageId': '573021a8-715d-465a-890f-b24207ab06c1', 'PublisherName': 'Penguin Publishing Group', 'Rating': 4.047826, 'TotalRating': 230, 'RatingHistogram': {'1': 5, '2': 10, '3': 41, '4': 87, '5': 0}, 'Slug': 'exit-west', 'IsContentSharingEnabled': True, 'RedirectPreviewUrls': [{'DrmType': 'None', 'Format': 'EPUB3_SAMPLE', 'Url': 'https://storedownloads.kobo.com/download?downloadToken=eyJ0eXAiOjIsInZlciI6bnVsbCwicHR5cCI6IlByZXZpZXdEb3dubG9hZFRva2VuIn0.cWoOja1aXK_bQjhEf72K0w.iEKSnYBwnUrYuNfhuMBUHMoAzbeXVrLetDoYjZ-9X9iWeePtNPb3J8Qwr4677v-BaUC6jb9RuBIVqb5eEb-fvB7ATEVKYUw-eRUVK0PzRtW323wKWN_VVRbyhzhnXmPcwZytK6V3MwI4DRkY7nD6IOdVZaZxfbkutyykmBY2fOYTGMke0UioXu4tYrTM65G6N2cw15UTDg8-7i0_WRlrNRAOCf8R4cRmvblfySKmZWT7V2grysKnMNPginyNX2YSkgCRfLVZgSwxOrtqiBi8ukUNjFJj4OSU6RvOwSPvu_R37cDnEW8Vft6tilrgc10nhXRKgUllGP8kN9DJXX6UbvhOKlrKCKzHJnkn4G272PQLFymSPSS_2frfbszEq_DuPiB-vNZgsgfP0B9ylHMx_oN497GSYfp8Kg9fiv8A9KZBz3DAU6r6Lgji5U5U0Dr0y4WBQ8hz2dVzKDTffwKkXDJFpbmd495Bb57BUf0JtsWt19n0aRALYJcjEQ3zKREpgKqLcHX4SpmBqrv1PkPr8tNwi-CINd1JXyll9SwSjmhfmHVcq7Lykgz4WCQ1oGwjGup3nEzHwpFwPq3RITFCZkUy41mc0QqZZ83PpWA3dqSNK-nsp5uZ84gw024C0CuUUq0GmefN3YD73fxBT2ASrA', 'Platform': 'Generic', 'Size': 742692}], 'HasPreview': True, 'Price': {'Currency': 'USD', 'Price': 13.99}, 'PromoCodeAllowed': False, 'EligibleForKoboLoveDiscount': False, 'IsPreOrder': False, 'RelatedGroupId': '180cc678-2429-c8da-0000-000000000000', 'AgeVerificationRequired': False, 'AccessibilityDetails': {'IsFixedLayout': False, 'IsTextToSpeechAllowed': False}, 'Id': 'ba03ec06-e024-46bb-b7fb-56b20c04f598'}}}
+def GetWishList(users: List[User]) -> List[Book]:
+    for user in users:
+        kobo = Kobo(user)
+        kobo.LoadInitializationSettings()
+        wishList = kobo.GetMyWishList()
+        for item in wishList:
+            yield Book(
+                RevisionId=item['CrossRevisionId'],
+                Title=item['ProductMetadata']['Book']['Title'],
+                Author=item['ProductMetadata']['Book']['Contributors'],
+                Archived=False,
+                Audiobook=False,
+                Owner=user,
+                Price=f"{item['ProductMetadata']['Book']['Price']['Price']} {item['ProductMetadata']['Book']['Price']['Currency']}",
             )
 
 

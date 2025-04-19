@@ -118,4 +118,35 @@ def list(ctx, user, read, export_library):
     click.echo(tabulate(data, headers, tablefmt=ctx['fmt']))
 
 
+@book.command(name='wishlist', help='list wishlist')
+@click.option(
+    '-u',
+    '--user',
+    type=click.STRING,
+    required=False,
+    help='Limit list to a single user. Use either Email or UserKey',
+)
+@click.pass_obj
+def wishlist(ctx, user):
+    userlist = Globals.Settings.UserList.users
+    
+    userlist = Globals.Settings.UserList.users
+    if user:
+        userlist = [Globals.Settings.UserList.getUser(user)]
+    books = actions.GetWishList(userlist)
+    headers = ['Title', 'Author', 'RevisionId', 'Owner', 'Price']
+    data = sorted(
+        [
+            (
+                book.Title + decorators(book),
+                book.Author,
+                book.RevisionId,
+                book.Owner.Email,
+                book.Price,
+            )
+            for book in books
+        ]
+    )
+    click.echo(tabulate(data, headers, tablefmt=ctx['fmt']))
+
 cli.add_command(book)
