@@ -5,12 +5,13 @@ import os
 import re
 import secrets
 import string
+import json
 import sys
 import time
 import urllib
 from enum import Enum
 from shutil import copyfile
-from typing import Dict, Tuple, Union
+from typing import Dict, Tuple, Union, Optional
 
 import requests
 from bs4 import BeautifulSoup
@@ -31,6 +32,7 @@ class Book:
     Archived: bool
     Audiobook: bool
     Owner: User
+    Price: Optional[str] = None
 
 
 class BookType(Enum):
@@ -74,11 +76,26 @@ class Kobo:
         return headers
 
     def __CheckActivation(self, activationCheckUrl) -> Union[Tuple[str, str, str], None]:
-        response = self.Session.get(activationCheckUrl)
+        response = self.Session.post(activationCheckUrl)
         response.raise_for_status()
-        jsonResponse = response.json()
+        jsonResponse = None
+
+        try:
+            jsonResponse = response.json()
+        except:
+            debug_data(f"Activation check response: {response.text}")
+            raise KoboException(f"Error checking the activation status. The response format was unexpected.")
+        
         if jsonResponse["Status"] == "Complete":
-            return (jsonResponse["UserEmail"], jsonResponse["UserId"], jsonResponse["UserKey"])
+            debug_data(f"Activation check response", {json.dumps(jsonResponse)})
+            redirectUrl = jsonResponse[ "RedirectUrl" ]
+            parsed = urllib.parse.urlparse( redirectUrl )
+            parsedQueries = urllib.parse.parse_qs( parsed.query )
+            userId = parsedQueries[ "userId" ][ 0 ]
+            userKey = parsedQueries[ "userKey" ][ 0 ]
+            userEmail = parsedQueries[ "email" ][ 0 ]
+            return userEmail, userId, userKey
+
         return None
 
     def __WaitTillActivation(self, activationCheckUrl) -> Tuple[str, str]:
@@ -158,7 +175,7 @@ class Kobo:
         # The hook's workflow is based on this:
         # https://github.com/requests/toolbelt/blob/master/requests_toolbelt/auth/http_proxy_digest.py
         def ReauthenticationHook(r, *args, **kwargs):
-            debug_data("Response", r.text)
+            debug_data("Reauth hook response", r.text)
             if r.status_code != requests.codes.unauthorized:  # 401
                 return
 
