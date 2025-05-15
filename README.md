@@ -159,6 +159,10 @@ kobodl book get \
 # Download ALL books with default options when only 1 user exists
 kobodl book get --get-all
 
+# Download only NEW books that weren't downloaded before
+kobodl book get --get-all --only-new
+
+
 # Download ALL books with advanced options
 kobodl book get \
   --user email@domain.com \

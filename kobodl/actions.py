@@ -212,6 +212,7 @@ def GetBookOrBooks(
     outputPath: str,
     formatStr: str = r'{Author} - {Title} {ShortRevisionId}',
     productId: str = '',
+    onlyNew: bool = False,
 ) -> Union[None, str]:
     """
     download 1 or all books to file
@@ -248,12 +249,17 @@ def GetBookOrBooks(
             fileName += '.epub'
         outputFilePath = os.path.join(outputPath, fileName)
 
+        currentProductId = Kobo.GetProductId(bookMetadata)
+        
+        if onlyNew and Globals.Settings.DownloadedBooks.is_downloaded(user.UserKey, currentProductId):
+            click.echo(f'Skipping previously downloaded book {fileName} (tracked in kobodl_downloads.json)')
+            continue
+
         if not productId and os.path.exists(outputFilePath):
             # when downloading ALL books, skip books we've downloaded before
             click.echo(f'Skipping already downloaded book {outputFilePath}')
             continue
 
-        currentProductId = Kobo.GetProductId(bookMetadata)
         if productId and productId != currentProductId:
             # user only asked for a single title,
             # and this is not the book they want
@@ -267,6 +273,10 @@ def GetBookOrBooks(
         try:
             click.echo(f'Downloading {currentProductId} to {outputFilePath}', err=True)
             kobo.Download(bookMetadata, book_type == BookType.AUDIOBOOK, outputFilePath)
+            
+            Globals.Settings.DownloadedBooks.mark_downloaded(user.UserKey, currentProductId)
+            Globals.Settings.SaveDownloadedBooks()
+                
         except KoboException as e:
             if productId:
                 raise e
