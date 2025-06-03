@@ -28,7 +28,7 @@ keywords = ["Kobo", "eBook", "Audiobook", "Downloader", "DRM"]
 kobodl = "kobodl:cli"
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.13"
+python = ">=3.9,<3.14"
 beautifulsoup4 = "<5.0.0"
 click = "<9"
 dataclasses = "<1.0.0"
