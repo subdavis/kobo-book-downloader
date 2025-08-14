@@ -11,6 +11,7 @@ from enum import Enum
 from shutil import copyfile
 from typing import Dict, Tuple, List
 
+import dataclasses
 import requests
 from bs4 import BeautifulSoup
 from dataclasses_json import dataclass_json
@@ -31,20 +32,53 @@ class Book:
     Audiobook: bool
     Owner: User
 
-
 class BookType(Enum):
     EBOOK = 1
     AUDIOBOOK = 2
     SUBSCRIPTION = 3
 
+@dataclass_json
+@dataclasses.dataclass
+class Drm:
+    DrmType: str
+    Keys: List[str]
+
+@dataclass_json
+@dataclasses.dataclass
+class NavigationItem:
+    Offset: float
+    PartId: int
+    Title: str
+
+@dataclass_json
+@dataclasses.dataclass
+class SpineItem:
+    Bitrate: float
+    Duration: float
+    Id: int
+    MediaType: str
+    Url: str
+    FileExtension: str
+
+@dataclass_json
+@dataclasses.dataclass
+class AudiobookData:
+    Drm: Drm
+    Navigation: List[NavigationItem]
+    Spine: List[SpineItem]
+
+    def get_spine(self, part_id: int) -> 'SpineItem | None':
+        for s in self.Spine:
+            if s.Id == part_id:
+                return s
+
+        raise KoboException(f"No matching spine found for PartId {part_id}. This will cause book generation to fail.")
 
 class NotAuthenticatedException(Exception):
     pass
 
-
 class KoboException(Exception):
     pass
-
 
 class Kobo:
     Affiliate = "Kobo"
@@ -315,48 +349,49 @@ date={bookMetadata.get("PublicationDate")}
 
     def __DownloadAudiobook(self, url, outputPath: str) -> None:
         response = self.Session.get(url)
-
+        files = []
         response.raise_for_status()
         if not os.path.isdir(outputPath):
             os.mkdir(outputPath)
-        data = response.json()
+        # Deserialize using AudiobookData dataclass
+        data = AudiobookData.from_dict(response.json())
 
         # Write response data to JSON file
         with open(os.path.join(outputPath, "data.json"), "w") as f:
-            f.write(json.dumps(data, indent=4))
+            f.write(data.to_json(indent=4))
 
         metadataHandler = open(os.path.join(outputPath, "metadata.txt"), "a")
-        filesHandler = open(os.path.join(outputPath, "files.txt"), "w")
 
         start = 0
 
-        for idx, item in enumerate(data['Navigation']):
-            # Add bounds check to prevent IndexError
-            part_id = item.get('PartId', 0)
-            if part_id >= len(data['Spine']):
-                print(f"Warning: PartId {part_id} is out of range for Spine list. Skipping this item.")
-                continue
+        for item in data.Navigation:
+            part_id = item.PartId
+            if part_id > len(data.Spine):
+                raise KoboException(f"PartId {part_id} is out of range for Spine list. This will cause book generation to fail.")
 
-            spine = data['Spine'][part_id]
-            spine_id = spine["Id"]
-            if data["Navigation"][0]["PartId"] != 0:
-                spine_id = spine_id - 1
+            spine = data.get_spine(part_id)
 
-            filename = f'{spine_id:03}.{spine["FileExtension"]}'
+            spine_id = spine.Id
+            filename = f'spine_{spine_id:04}.{spine.FileExtension}'
             metadataHandler.write(
-                self.__createFFMpegChapter(start, spine['Duration'] * 1000, item["Title"]) + '\n\n'
+                self.__createFFMpegChapter(start, int(spine.Duration * 1000), item.Title) + '\n\n'
             )
-            start += spine['Duration'] * 1000
+            start += int(spine.Duration * 1000)
 
-            filesHandler.write(f"file '{filename}'\n")
+            if filename not in files:
+                files.append(filename)
 
             # Download chapter if missing
             if not os.path.isfile(os.path.join(outputPath, filename)):
-                response = self.Session.get(spine['Url'], stream=True)
+                resp_chapter = self.Session.get(spine.Url, stream=True)
                 filePath = os.path.join(outputPath, filename)
                 with open(filePath, "wb") as f:
-                    for chunk in response.iter_content(chunk_size=1024 * 256):
+                    for chunk in resp_chapter.iter_content(chunk_size=1024 * 256):
                         f.write(chunk)
+
+        with open(os.path.join(outputPath, "files.txt"), "w") as filesHandler:
+            for f in files:
+                filesHandler.write(f"file '{f}'\n")
 
         metadataHandler.close()
         filesHandler.close()
