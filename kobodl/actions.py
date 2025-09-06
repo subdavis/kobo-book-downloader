@@ -267,18 +267,18 @@ def GetBookOrBooks(
         try:
             click.echo(f'Downloading {currentProductId} to {outputFilePath}', err=True)
             kobo.Download(bookMetadata, book_type == BookType.AUDIOBOOK, outputFilePath)
-        except KoboException as e:
+        except Exception as e:
             if productId:
                 raise e
-            else:
-                click.echo(
-                    (
-                        f'Skipping failed download for {currentProductId}: {str(e)}'
-                        '\n  -- Try downloading it as a single book to get the complete exception details'
-                        ' and open an issue on the project GitHub page: https://github.com/subdavis/kobo-book-downloader/issues'
-                    ),
-                    err=True,
-                )
+
+            click.echo(
+                (
+                    f'Skipping failed download for {currentProductId}: {str(e)}'
+                    '\n  -- Try downloading it as a single book to get the complete exception details'
+                    ' and open an issue on the project GitHub page: https://github.com/subdavis/kobo-book-downloader/issues'
+                ),
+                err=True,
+            )
 
         if productId:
             # TODO: support audiobook downloads from web
