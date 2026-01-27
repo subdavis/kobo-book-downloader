@@ -266,6 +266,7 @@ def GetBookOrBooks(
 
         try:
             click.echo(f'Downloading {currentProductId} to {outputFilePath}', err=True)
+            os.makedirs(os.path.dirname(outputFilePath), exist_ok=True)
             kobo.Download(bookMetadata, book_type == BookType.AUDIOBOOK, outputFilePath)
         except Exception as e:
             if productId:
