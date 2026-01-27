@@ -43,7 +43,12 @@ def book():
     '--format-str',
     type=click.STRING,
     default=r'{Author} - {Title} {ShortRevisionId}',
-    help=r"default: '{Author} - {Title} {ShortRevisionId}'",
+    help=(
+        "Format string for output filename. "
+        "Available fields: {Author}, {Title}, {ShortRevisionId}. "
+        "Use '/' to create subdirectories (e.g., '{Author}/{Title}'). "
+        "Default: '{Author} - {Title} {ShortRevisionId}'"
+    ),
 )
 @click.argument('product-id', nargs=-1, type=click.STRING)
 @click.pass_obj
