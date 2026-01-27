@@ -165,7 +165,24 @@ kobodl book get \
   --output-dir /path/to/download_directory \
   --format-str '{Title}' \
   --get-all
+
+# Download books organized into subdirectories by author
+kobodl book get \
+  --output-dir /path/to/library \
+  --format-str '{Author}/{Title}' \
+  --get-all
 ```
+
+### Format string options
+
+The `--format-str` option supports the following fields:
+- `{Author}` - Book author(s)
+- `{Title}` - Book title
+- `{ShortRevisionId}` - First 8 characters of the revision ID (useful for avoiding filename collisions)
+
+You can use `/` in the format string to organize books into subdirectories. For example:
+- `'{Author}/{Title}'` creates `Author Name/Book Title.epub`
+- `'{Author} - {Title} {ShortRevisionId}'` creates `Author Name - Book Title a1b2c3d4.epub` (default)
 
 Running the web UI
 
