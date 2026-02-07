@@ -10,38 +10,46 @@ use_parentheses = true
 include_trailing_comma = true
 multi_line_output = 3
 
-[tool.poetry]
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[project]
+authors = [
+    {name = "Brandon Davis", email = "kobodl@subdavis.com"},
+]
+license = {text = "Unlicense"}
+requires-python = "<3.13,>=3.9"
+dependencies = [
+    "beautifulsoup4<5.0.0",
+    "click<9",
+    "dataclasses<1.0.0",
+    "dataclasses-json<0.6.0",
+    "flask==3.1.0",
+    "pycryptodome<4",
+    "requests<3.0,>=2.25",
+    "tabulate<0.9.0",
+    "setuptools<76.0.0,>=75.8.0",
+]
 name = "kobodl"
 version = "0.12.0"
 description = "Kobo Book Downloader"
-authors = ["Brandon Davis <kobodl@subdavis.com>"]
-license = "Unlicense"
-include = [
-  "kobodl/templates",
-  "kobodl/commands",
-]
 readme = "README.md"
-repository = "https://github.com/subdavis/kobo-book-downloader.git"
-keywords = ["Kobo", "eBook", "Audiobook", "Downloader", "DRM"]
+keywords = [
+    "Kobo",
+    "eBook",
+    "Audiobook",
+    "Downloader",
+    "DRM",
+]
 
-[tool.poetry.scripts]
+[project.urls]
+repository = "https://github.com/subdavis/kobo-book-downloader.git"
+
+[project.scripts]
 kobodl = "kobodl:cli"
 
-[tool.poetry.dependencies]
-python = ">=3.9,<3.13"
-beautifulsoup4 = "<5.0.0"
-click = "<9"
-dataclasses = "<1.0.0"
-dataclasses-json = "<0.6.0"
-flask = "3.1.0"
-pycryptodome = "<4"
-requests = "^2.25"
-tabulate = "<0.9.0"
-setuptools = "^75.8.0"
-
-[tool.poetry.group.dev.dependencies]
-tox = "^3.24.4"
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+[dependency-groups]
+dev = [
+    "tox<4.0.0,>=3.24.4",
+]
