@@ -290,14 +290,13 @@ class Kobo:
             for key in download_keys:
                 download_url = jsonContentUrl.get(key, None)
                 if download_url:
-                    parsed = urllib.parse.urlparse(download_url)
-                    parsedQueries = urllib.parse.parse_qs(parsed.query)
-                    parsedQueries.pop(
-                        "b", None
-                    )  # https://github.com/TnS-hun/kobo-book-downloader/commit/54a7f464c7fdf552e62c209fb9c3e7e106dabd85
-                    download_url = parsed._replace(
-                        query=urllib.parse.urlencode(parsedQueries, doseq=True)
-                    ).geturl()
+                    if 'amazonaws.com' not in download_url:
+                        parsed = urllib.parse.urlparse(download_url)
+                        parsedQueries = urllib.parse.parse_qs(parsed.query)
+                        parsedQueries.pop("b", None)
+                        download_url = parsed._replace(
+                            query=urllib.parse.urlencode(parsedQueries, doseq=True)
+                        ).geturl()
                     return download_url, hasDrm
 
         message = f"Download URL for supported formats can't be found for product '{productId}'.\n"
@@ -307,14 +306,24 @@ class Kobo:
         raise KoboException(message)
 
     def __DownloadToFile(self, url, outputPath: str) -> None:
-        response = self.Session.get(url, stream=True)
+        headers = {}
+        if 'amazonaws.com' in url:
+            headers["x-amz-request-payer"] = "requester"
+        if 'kobo.com' in url and 'amazonaws.com' not in url:
+            headers.update(self.__GetHeaderWithAccessToken())
+        response = self.Session.get(url, headers=headers, stream=True)
         response.raise_for_status()
         with open(outputPath, "wb") as f:
             for chunk in response.iter_content(chunk_size=1024 * 256):
                 f.write(chunk)
 
     def __DownloadAudiobook(self, url, outputPath: str) -> None:
-        response = self.Session.get(url)
+        headers = {}
+        if 'amazonaws.com' in url:
+            headers["x-amz-request-payer"] = "requester"
+        if 'kobo.com' in url and 'amazonaws.com' not in url:
+            headers.update(self.__GetHeaderWithAccessToken())
+        response = self.Session.get(url, headers=headers)
 
         response.raise_for_status()
         if not os.path.isdir(outputPath):
@@ -323,7 +332,13 @@ class Kobo:
 
         for item in data['Spine']:
             fileNum = int(item['Id']) + 1
-            response = self.Session.get(item['Url'], stream=True)
+            fileUrl = item['Url']
+            fileHeaders = {}
+            if 'amazonaws.com' in fileUrl:
+                fileHeaders["x-amz-request-payer"] = "requester"
+            if 'kobo.com' in fileUrl and 'amazonaws.com' not in fileUrl:
+                fileHeaders.update(self.__GetHeaderWithAccessToken())
+            response = self.Session.get(fileUrl, headers=fileHeaders, stream=True)
             filePath = os.path.join(outputPath, str(fileNum) + '.' + item['FileExtension'])
             with open(filePath, "wb") as f:
                 for chunk in response.iter_content(chunk_size=1024 * 256):
