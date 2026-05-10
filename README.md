@@ -83,6 +83,11 @@ chmod +x kobodl-ubuntu
 # MacOS (Catalina 10.15 or newer required.  For older versions, use the pip or docker install option)
 wget https://github.com/subdavis/kobo-book-downloader/releases/latest/download/kobodl-macos
 chmod +x kobodl-macos
+
+# Remove the quarentine attribute. I have not paid the $99 apple tax to properly sign this app
+# Note: You may also need to go into Settings -> Privacy & Security and allow this executable to run
+xattr -d com.apple.quarantine kobodl-macos
+
 ./kobodl-macos
 ```
 
