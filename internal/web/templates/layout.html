@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>kobodl</title>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style>
+    nav ul li a { font-weight: bold; }
+    .badge { font-size: 0.75em; padding: 0.1em 0.4em; border-radius: 4px; background: #eee; }
+    .badge-audio { background: #d0f0ff; }
+    .badge-archived { background: #ffd0d0; }
+  </style>
+</head>
+<body>
+<nav class="container-fluid">
+  <ul>
+    <li><strong>kobodl</strong></li>
+  </ul>
+  <ul>
+    <li><a href="/user">Users</a></li>
+    <li><a href="/book">All Books</a></li>
+    <li><a href="https://github.com/subdavis/kobo-book-downloader" target="_blank">GitHub</a></li>
+  </ul>
+</nav>
+<main class="container">
+  {{template "content" .}}
+</main>
+</body>
+</html>

@@ -1,0 +1,41 @@
+{{template "layout.html" .}}
+{{define "content"}}
+<h2>Books</h2>
+
+{{if .Error}}
+<article role="alert">{{.Error}}</article>
+{{end}}
+
+{{if .Books}}
+<table>
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Author</th>
+      <th>ID</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {{range .Books}}
+  <tr>
+    <td>
+      {{.Title}}
+      {{if .Audiobook}}<span class="badge badge-audio">Audiobook</span>{{end}}
+      {{if .Archived}}<span class="badge badge-archived">Archived</span>{{end}}
+    </td>
+    <td>{{.Author}}</td>
+    <td><code>{{.RevisionId}}</code></td>
+    <td>
+      {{if and (not .Audiobook) (not .Archived) $.UserId}}
+      <a href="/user/{{$.UserId}}/book/{{.RevisionId}}">Download</a>
+      {{end}}
+    </td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p>No books found.</p>
+{{end}}
+{{end}}

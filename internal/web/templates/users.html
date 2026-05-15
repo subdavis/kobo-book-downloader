@@ -1,0 +1,81 @@
+{{template "layout.html" .}}
+{{define "content"}}
+<h2>Users</h2>
+
+{{if .Error}}
+<article role="alert">{{.Error}}</article>
+{{end}}
+
+{{if .Users}}
+<table>
+  <thead><tr><th>Email</th><th>User ID</th><th>Authenticated</th><th></th></tr></thead>
+  <tbody>
+  {{range .Users}}
+  <tr>
+    <td>{{.Email}}</td>
+    <td><code>{{.UserId}}</code></td>
+    <td>{{if .IsAuthenticated}}✓{{else}}—{{end}}</td>
+    <td>
+      <a href="/user/{{.UserId}}/book">Books</a>
+      &nbsp;
+      <form method="post" action="/user/{{.UserId}}/remove" style="display:inline">
+        <button type="submit" class="secondary outline" style="padding:0.2em 0.6em">Remove</button>
+      </form>
+    </td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+{{else}}
+<p>No users yet. Add one below.</p>
+{{end}}
+
+<hr>
+<h3>Add Account</h3>
+<form id="login-form"
+      hx-post="/user"
+      hx-target="#activation-section"
+      hx-swap="innerHTML">
+  <label>
+    Email
+    <input type="email" name="email" placeholder="you@example.com" required>
+  </label>
+  <button type="submit">Start Activation</button>
+</form>
+
+<div id="activation-section"></div>
+
+<script>
+document.body.addEventListener('htmx:afterRequest', function(e) {
+  if (e.detail.elt.id !== 'login-form') return;
+  const resp = JSON.parse(e.detail.xhr.responseText);
+  if (resp.error) {
+    document.getElementById('activation-section').innerHTML =
+      '<article role="alert">' + resp.error + '</article>';
+    return;
+  }
+  document.getElementById('activation-section').innerHTML =
+    '<article>' +
+    '<p>Open <a href="' + resp.activation_url + '" target="_blank">kobo.com/activate</a> and enter code: <strong>' + resp.activation_code + '</strong></p>' +
+    '<p id="poll-status">Waiting for activation...</p>' +
+    '</article>';
+  pollActivation(resp.check_url, resp.email);
+});
+
+function pollActivation(checkUrl, email) {
+  const interval = setInterval(async function() {
+    const r = await fetch('/user/check-activation', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({check_url: checkUrl, email: email})
+    });
+    const data = await r.json();
+    if (data.success) {
+      clearInterval(interval);
+      document.getElementById('poll-status').textContent = 'Activated! Refreshing...';
+      setTimeout(() => location.reload(), 1000);
+    }
+  }, 5000);
+}
+</script>
+{{end}}

@@ -1,0 +1,7 @@
+{{template "layout.html" .}}
+{{define "content"}}
+<article role="alert">
+  <strong>Error:</strong> {{.Error}}
+</article>
+<a href="javascript:history.back()">← Back</a>
+{{end}}
