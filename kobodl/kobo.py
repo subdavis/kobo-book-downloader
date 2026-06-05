@@ -307,8 +307,10 @@ class Kobo:
 
     def __DownloadToFile(self, url, outputPath: str) -> None:
         headers = {}
-        if 'amazonaws.com' in url:
-            headers["x-amz-request-payer"] = "requester"
+        # Kobo serves content via storedownloads.kobo.com URLs that redirect to
+        # requester-pays S3 presigned URLs (which sign host;x-amz-request-payer).
+        # Always send the header so it survives the redirect; non-S3 hosts ignore it.
+        headers["x-amz-request-payer"] = "requester"
         if 'kobo.com' in url and 'amazonaws.com' not in url:
             headers.update(self.__GetHeaderWithAccessToken())
         response = self.Session.get(url, headers=headers, stream=True)
@@ -319,8 +321,9 @@ class Kobo:
 
     def __DownloadAudiobook(self, url, outputPath: str) -> None:
         headers = {}
-        if 'amazonaws.com' in url:
-            headers["x-amz-request-payer"] = "requester"
+        # See __DownloadToFile: send x-amz-request-payer unconditionally so it
+        # survives the storedownloads.kobo.com -> S3 redirect.
+        headers["x-amz-request-payer"] = "requester"
         if 'kobo.com' in url and 'amazonaws.com' not in url:
             headers.update(self.__GetHeaderWithAccessToken())
         response = self.Session.get(url, headers=headers)
@@ -334,8 +337,9 @@ class Kobo:
             fileNum = int(item['Id']) + 1
             fileUrl = item['Url']
             fileHeaders = {}
-            if 'amazonaws.com' in fileUrl:
-                fileHeaders["x-amz-request-payer"] = "requester"
+            # Spine entries are storedownloads.kobo.com URLs that redirect to
+            # requester-pays S3; send the header unconditionally so it survives.
+            fileHeaders["x-amz-request-payer"] = "requester"
             if 'kobo.com' in fileUrl and 'amazonaws.com' not in fileUrl:
                 fileHeaders.update(self.__GetHeaderWithAccessToken())
             response = self.Session.get(fileUrl, headers=fileHeaders, stream=True)
