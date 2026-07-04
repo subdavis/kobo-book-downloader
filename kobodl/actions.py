@@ -212,7 +212,7 @@ def GetBookOrBooks(
     outputPath: str,
     formatStr: str = r'{Author} - {Title} {ShortRevisionId}',
     productId: str = '',
-    excludePreviews: bool = True,
+    includePreviews: bool = True,
 ) -> Union[None, str]:
     """
     download 1 or all books to file
@@ -233,9 +233,10 @@ def GetBookOrBooks(
         if newEntitlement is None:
             continue
 
-        if excludePreviews and newEntitlement.get('BookEntitlement') is not None:
+        if not includePreviews and newEntitlement.get('BookEntitlement') is not None:
             access =  newEntitlement.get('BookEntitlement').get('Accessibility')
             if access != 'Full':
+                click.echo(f'Skipping {access} access book')
                 continue
 
         bookMetadata, book_type = __GetBookMetadata(newEntitlement)
