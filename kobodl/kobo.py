@@ -14,7 +14,6 @@ from shutil import copyfile
 from typing import Dict, Tuple, Union, Optional
 
 import requests
-from bs4 import BeautifulSoup
 from dataclasses_json import dataclass_json
 
 from kobodl.debug import debug_data
