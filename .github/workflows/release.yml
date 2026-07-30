@@ -56,6 +56,26 @@ jobs:
           pip install tox;
       -
         run: tox -e buildcli -- --name kobodl-${{ matrix.name }}
+      -
+        name: Smoke test the web server
+        shell: bash
+        run: |
+          ./dist/kobodl-${{ matrix.name }}* serve --port 8451 > serve.log 2>&1 &
+          server_pid=$!
+          status=1
+          for _ in $(seq 30); do
+            if curl -fsS http://127.0.0.1:8451/user > /dev/null; then
+              status=0
+              break
+            fi
+            sleep 1
+          done
+          kill $server_pid || true
+          cat serve.log
+          if [ $status -ne 0 ]; then
+            echo "::error::the bundled web server could not render /user"
+          fi
+          exit $status
       - 
         name: Upload Release Asset
         uses: alexellis/upload-assets@0.3.0
