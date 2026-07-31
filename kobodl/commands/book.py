@@ -38,6 +38,7 @@ def book():
     help='default: kobo_downloads',
 )
 @click.option('-a', '--get-all', is_flag=True)
+@click.option('-p', '--include-previews', is_flag=True)
 @click.option(
     '-f',
     '--format-str',
@@ -52,7 +53,7 @@ def book():
 )
 @click.argument('product-id', nargs=-1, type=click.STRING)
 @click.pass_obj
-def get(ctx, user, output_dir: Path, get_all: bool, format_str: str, product_id: List[str]):
+def get(ctx, user, output_dir: Path, get_all: bool, include_previews: bool, format_str: str, product_id: List[str]):
     if len(Globals.Settings.UserList.users) == 0:
         click.echo('error: no users found.  Did you `kobodl user add`?', err=True)
         exit(1)
@@ -82,7 +83,7 @@ def get(ctx, user, output_dir: Path, get_all: bool, format_str: str, product_id:
 
     os.makedirs(output_dir, exist_ok=True)
     if get_all:
-        actions.GetBookOrBooks(usercls, output_dir, formatStr=format_str)
+        actions.GetBookOrBooks(usercls, output_dir, formatStr=format_str, includePreviews=include_previews)
     else:
         for pid in product_id:
             actions.GetBookOrBooks(usercls, output_dir, formatStr=format_str, productId=pid)
