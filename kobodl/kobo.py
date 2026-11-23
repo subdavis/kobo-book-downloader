@@ -264,6 +264,14 @@ class Kobo:
         if not isAudiobook:
             jsonResponse = self.__GetContentAccessBook(productId, displayProfile)
             jsonContentUrls = Kobo.__getContentUrls(jsonResponse)
+            # For some books (e.g. fixed-layout comics, Kobo Plus titles) the
+            # content access endpoint returns the ContentKeys but an empty
+            # ContentUrls list. The library sync metadata often still carries
+            # the download URLs, so fall back to those. See issue #185.
+            if not jsonContentUrls:
+                fallbackUrls = Kobo.__getContentUrls(bookMetadata)
+                if fallbackUrls:
+                    jsonContentUrls = fallbackUrls
         else:
             jsonContentUrls = Kobo.__getContentUrls(bookMetadata)
 
@@ -301,7 +309,9 @@ class Kobo:
         message = f"Download URL for supported formats can't be found for product '{productId}'.\n"
         message += "Available formats:"
         for jsonContentUrl in jsonContentUrls:
-            message += f'\nDRMType: \'{jsonContentUrl["DRMType"]}\', UrlFormat: \'{jsonContentUrl["UrlFormat"]}\''
+            drmType = jsonContentUrl.get("DRMType", jsonContentUrl.get("DrmType"))
+            urlFormat = jsonContentUrl.get("UrlFormat", jsonContentUrl.get("Format"))
+            message += f'\nDRMType: \'{drmType}\', UrlFormat: \'{urlFormat}\''
         raise KoboException(message)
 
     def __DownloadToFile(self, url, outputPath: str) -> None:
